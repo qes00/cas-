@@ -1,8 +1,9 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DbService } from '../../services/db.service';
 import { TranslationService } from '../../services/translation.service';
+import { CashShift } from '../../services/data.types';
 
 @Component({
   selector: 'app-cash-control',
@@ -40,7 +41,8 @@ import { TranslationService } from '../../services/translation.service';
               <label class="block text-left text-sm font-bold text-slate-700 mb-1">{{ t('openingCash') }}</label>
               <div class="relative">
                 <span class="absolute left-3 top-2 text-slate-400">S/.</span>
-                <input type="number" [(ngModel)]="inputAmount" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
+                <!-- Use standard property binding, not signal, for input stability -->
+                <input type="number" [(ngModel)]="amountInput" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
               </div>
             </div>
 
@@ -58,6 +60,10 @@ import { TranslationService } from '../../services/translation.service';
                    <div class="flex justify-between">
                      <span class="text-slate-600">{{ t('openedAt') }}</span>
                      <span class="font-mono">{{ activeShift()?.openedAt | date:'shortTime' }}</span>
+                   </div>
+                   <div class="flex justify-between">
+                     <span class="text-slate-600">Opened By</span>
+                     <span class="font-mono font-bold">{{ activeShift()?.userName }}</span>
                    </div>
                    <div class="flex justify-between">
                      <span class="text-slate-600">{{ t('startCash') }}</span>
@@ -82,13 +88,13 @@ import { TranslationService } from '../../services/translation.service';
                   <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('actualCashCounted') }}</label>
                   <div class="relative">
                     <span class="absolute left-3 top-2 text-slate-400">S/.</span>
-                    <input type="number" [(ngModel)]="inputAmount" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none bg-white">
+                    <input type="number" [(ngModel)]="amountInput" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none bg-white">
                   </div>
                </div>
 
-               @if (diff() !== 0 && inputAmount() > 0) {
-                 <div class="text-sm font-bold" [class.text-red-500]="diff() < 0" [class.text-green-500]="diff() > 0">
-                    {{ t('difference') }}: {{ diff() > 0 ? '+' : '' }}S/.{{ diff() | number:'1.2-2' }}
+               @if (currentDiff !== 0 && amountInput > 0) {
+                 <div class="text-sm font-bold" [class.text-red-500]="currentDiff < 0" [class.text-green-500]="currentDiff > 0">
+                    {{ t('difference') }}: {{ currentDiff > 0 ? '+' : '' }}S/.{{ currentDiff | number:'1.2-2' }}
                  </div>
                }
 
@@ -110,6 +116,7 @@ import { TranslationService } from '../../services/translation.service';
             <thead class="bg-slate-50 text-slate-500">
               <tr>
                 <th class="px-6 py-3">{{ t('date') }}</th>
+                <th class="px-6 py-3">Seller</th>
                 <th class="px-6 py-3">{{ t('status') }}</th>
                 <th class="px-6 py-3 text-right">{{ t('expected') }}</th>
                 <th class="px-6 py-3 text-right">{{ t('actual') }}</th>
@@ -120,6 +127,12 @@ import { TranslationService } from '../../services/translation.service';
               @for (shift of db.shifts(); track shift.id) {
                 <tr class="hover:bg-slate-50">
                   <td class="px-6 py-3">{{ shift.openedAt | date:'medium' }}</td>
+                  <td class="px-6 py-3">
+                    <div class="font-medium">{{ shift.userName }}</div>
+                    @if(shift.closedByUserName && shift.closedByUserName !== shift.userName) {
+                      <div class="text-xs text-slate-400">Closed by: {{ shift.closedByUserName }}</div>
+                    }
+                  </td>
                   <td class="px-6 py-3">
                     <span class="px-2 py-0.5 rounded text-xs font-bold" [class.bg-green-100]="shift.status=='OPEN'" [class.text-green-700]="shift.status=='OPEN'" [class.bg-slate-200]="shift.status=='CLOSED'">
                       {{ t(shift.status.toLowerCase()) }}
@@ -147,24 +160,94 @@ export class CashControlComponent {
   translationService = inject(TranslationService);
   
   activeShift = this.db.activeShift;
-  inputAmount = signal(0);
   
-  diff = computed(() => {
+  // Use a simple number property to avoid Signal/Model binding conflicts
+  amountInput: number = 0;
+  
+  get currentDiff(): number {
     const shift = this.activeShift();
     if (!shift) return 0;
-    return this.inputAmount() - shift.endCashExpected;
-  });
+    return this.amountInput - shift.endCashExpected;
+  }
 
   openShift() {
-    this.db.openShift(this.inputAmount());
-    this.inputAmount.set(0);
+    try {
+      if (this.amountInput < 0) throw new Error('Cannot open with negative cash.');
+      this.db.openShift(this.amountInput);
+      this.amountInput = 0;
+    } catch (e: any) {
+      alert(e.message);
+    }
   }
 
   closeShift() {
-    if (confirm('Are you sure you want to close this shift? This action cannot be undone.')) {
-      this.db.closeShift(this.inputAmount());
-      this.inputAmount.set(0);
+    const shift = this.activeShift();
+    if (!shift) return;
+
+    if (confirm('Are you sure you want to close this shift? This will generate a report.')) {
+      try {
+        const finalAmount = Number(this.amountInput);
+        const difference = finalAmount - shift.endCashExpected;
+        
+        // 1. Generate Report Blob
+        this.generateAndDownloadReport(shift, finalAmount, difference);
+
+        // 2. Perform DB Closure
+        this.db.closeShift(finalAmount);
+        
+        // 3. Reset
+        this.amountInput = 0;
+        alert('Shift Closed & Report Downloaded.');
+        
+      } catch (e: any) {
+        console.error(e);
+        alert('Error closing shift: ' + e.message);
+      }
     }
+  }
+
+  generateAndDownloadReport(shift: CashShift, actual: number, diff: number) {
+    const currentUser = this.db.currentUser();
+    const date = new Date();
+    
+    const lines = [
+      "==========================================",
+      "       RETAIL FLOW - REPORTE DE CAJA      ",
+      "==========================================",
+      `Fecha Reporte: ${date.toLocaleString()}`,
+      `ID Turno:      ${shift.id.substring(0, 8)}`,
+      "------------------------------------------",
+      "DETALLES DEL USUARIO",
+      `Apertura por:  ${shift.userName}`,
+      `Cierre por:    ${currentUser?.name || 'Desconocido'}`,
+      "------------------------------------------",
+      "TIEMPO",
+      `Inicio:        ${new Date(shift.openedAt).toLocaleString()}`,
+      `Fin:           ${date.toLocaleString()}`,
+      "------------------------------------------",
+      "RESUMEN DE EFECTIVO (PEN)",
+      `Base Inicial:       S/. ${shift.startCash.toFixed(2)}`,
+      `Ventas (Efectivo):  S/. ${(shift.endCashExpected - shift.startCash).toFixed(2)}`,
+      "------------------------------------------",
+      `TOTAL ESPERADO:     S/. ${shift.endCashExpected.toFixed(2)}`,
+      `TOTAL REAL (Caja):  S/. ${actual.toFixed(2)}`,
+      "------------------------------------------",
+      `DIFERENCIA:         S/. ${diff.toFixed(2)}`,
+      "==========================================",
+      diff === 0 ? "             BALANCE EXACTO               " : (diff < 0 ? "           FALTANTE DE CAJA               " : "           SOBRANTE DE CAJA               "),
+      "=========================================="
+    ];
+
+    const textContent = lines.join('\n');
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cierre_caja_${date.toISOString().slice(0,10)}_${shift.id.substring(0,4)}.txt`;
+    a.click();
+    
+    window.URL.revokeObjectURL(url);
   }
   
   t(key: string): string {

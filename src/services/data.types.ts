@@ -3,6 +3,13 @@ export interface Attribute {
   values: string[]; // e.g. ["Red", "Blue"]
 }
 
+export interface User {
+  id: string;
+  name: string;
+  role: 'ADMIN' | 'SELLER';
+  createdAt: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -45,6 +52,8 @@ export interface Sale {
   items: CartItem[];
   paymentMethod: 'CASH' | 'CARD' | 'OTHER';
   shiftId: string | null;
+  userId: string;     // Added
+  userName: string;   // Added snapshot of name
 }
 
 export interface CashShift {
@@ -56,6 +65,10 @@ export interface CashShift {
   endCashActual: number | null;
   status: 'OPEN' | 'CLOSED';
   movements: CashMovement[];
+  userId: string;     // User who opened
+  userName: string;   // Name of user who opened
+  closedByUserId?: string; // User who closed
+  closedByUserName?: string; // Name of user who closed
 }
 
 export interface CashMovement {

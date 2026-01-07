@@ -1,96 +1,166 @@
 <div class="flex h-full w-full bg-slate-100 overflow-hidden">
   
-  <!-- Sidebar -->
-  <aside 
-    class="bg-slate-900 text-white flex flex-col transition-all duration-300 ease-in-out shadow-xl z-20"
-    [class.w-64]="isSidebarOpen()"
-    [class.w-20]="!isSidebarOpen()"
-  >
-    <div class="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950">
-      @if (isSidebarOpen()) {
-        <h1 class="font-bold text-xl tracking-tight text-blue-400">{{ t('retailFlow') }}</h1>
-      }
-      <button (click)="toggleSidebar()" class="p-2 rounded hover:bg-slate-800 text-slate-400">
-        <span class="material-icons">menu</span>
-      </button>
-    </div>
-
-    <nav class="flex-1 py-6 space-y-2 px-2 overflow-y-auto">
-      <button (click)="setView('dashboard')" 
-        class="w-full flex items-center p-3 rounded-lg transition-colors group"
-        [class.bg-blue-600]="currentView() === 'dashboard'"
-        [class.text-white]="currentView() === 'dashboard'"
-        [class.text-slate-400]="currentView() !== 'dashboard'"
-        [class.hover:bg-slate-800]="currentView() !== 'dashboard'"
-      >
-        <span class="material-icons text-2xl">dashboard</span>
-        @if (isSidebarOpen()) {
-          <span class="ml-4 font-medium">{{ t('dashboard') }}</span>
-        }
-      </button>
-
-      <button (click)="setView('pos')" 
-        class="w-full flex items-center p-3 rounded-lg transition-colors group"
-        [class.bg-blue-600]="currentView() === 'pos'"
-        [class.text-white]="currentView() === 'pos'"
-        [class.text-slate-400]="currentView() !== 'pos'"
-        [class.hover:bg-slate-800]="currentView() !== 'pos'"
-      >
-        <span class="material-icons text-2xl">point_of_sale</span>
-        @if (isSidebarOpen()) {
-          <span class="ml-4 font-medium">{{ t('pos') }}</span>
-        }
-      </button>
-
-      <button (click)="setView('inventory')" 
-        class="w-full flex items-center p-3 rounded-lg transition-colors group"
-        [class.bg-blue-600]="currentView() === 'inventory'"
-        [class.text-white]="currentView() === 'inventory'"
-        [class.text-slate-400]="currentView() !== 'inventory'"
-        [class.hover:bg-slate-800]="currentView() !== 'inventory'"
-      >
-        <span class="material-icons text-2xl">inventory_2</span>
-        @if (isSidebarOpen()) {
-          <span class="ml-4 font-medium">{{ t('inventory') }}</span>
-        }
-      </button>
-
-      <button (click)="setView('cash')" 
-        class="w-full flex items-center p-3 rounded-lg transition-colors group"
-        [class.bg-blue-600]="currentView() === 'cash'"
-        [class.text-white]="currentView() === 'cash'"
-        [class.text-slate-400]="currentView() !== 'cash'"
-        [class.hover:bg-slate-800]="currentView() !== 'cash'"
-      >
-        <span class="material-icons text-2xl">account_balance_wallet</span>
-        @if (isSidebarOpen()) {
-          <span class="ml-4 font-medium">{{ t('cashControl') }}</span>
-        }
-      </button>
-    </nav>
-    
-    <div class="p-4 border-t border-slate-800 text-xs text-slate-500">
-      @if (isSidebarOpen()) {
-        <div class="flex justify-center gap-2 mb-2">
-          <button (click)="setLang('en')" class="px-2 py-1 rounded text-xs font-bold" [class.bg-blue-600]="translationService.language() === 'en'" [class.text-white]="translationService.language() === 'en'" [class.hover:bg-slate-700]="translationService.language() !== 'en'">EN</button>
-          <button (click)="setLang('es')" class="px-2 py-1 rounded text-xs font-bold" [class.bg-blue-600]="translationService.language() === 'es'" [class.text-white]="translationService.language() === 'es'" [class.hover:bg-slate-700]="translationService.language() !== 'es'">ES</button>
+  @if (!db.currentUser()) {
+    <!-- Login Overlay -->
+    <div class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-8 bg-blue-600 text-center">
+          <span class="material-icons text-white text-6xl mb-2">storefront</span>
+          <h1 class="text-3xl font-bold text-white">{{ t('retailFlow') }}</h1>
+          <p class="text-blue-100">{{ t('whoIsSelling') }}</p>
         </div>
-        <p class="text-center">v1.0.0 • {{ t('online') }}</p>
-      }
-    </div>
-  </aside>
+        
+        <div class="p-8">
+          <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('enterName') }}</label>
+          <div class="flex gap-2 mb-6">
+            <input 
+              type="text" 
+              [(ngModel)]="loginName" 
+              (keyup.enter)="performLogin()"
+              [placeholder]="t('seller')" 
+              class="flex-1 border border-slate-300 rounded-lg px-4 py-3 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+            <button (click)="performLogin()" [disabled]="!loginName()" class="bg-blue-600 text-white px-6 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50">
+              <span class="material-icons">arrow_forward</span>
+            </button>
+          </div>
 
-  <!-- Main Content Area -->
-  <main class="flex-1 relative overflow-hidden flex flex-col">
-    <!-- View Container -->
-    <div class="flex-1 overflow-auto bg-slate-50 p-4 md:p-6">
-      @switch (currentView()) {
-        @case ('dashboard') { <app-dashboard /> }
-        @case ('pos') { <app-pos /> }
-        @case ('inventory') { <app-inventory /> }
-        @case ('cash') { <app-cash-control /> }
-      }
+          @if (db.users().length > 0) {
+            <div class="border-t border-slate-100 pt-4">
+              <p class="text-xs font-bold text-slate-400 uppercase mb-3">{{ t('selectUser') }}</p>
+              <div class="space-y-2 max-h-48 overflow-y-auto">
+                @for (user of db.users(); track user.id) {
+                  <button (click)="selectExistingUser(user.name)" class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 transition text-left group">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                      {{ user.name.charAt(0).toUpperCase() }}
+                    </div>
+                    <span class="font-medium text-slate-700 group-hover:text-blue-600">{{ user.name }}</span>
+                    <span class="material-icons text-slate-300 ml-auto text-sm group-hover:text-blue-400">login</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
     </div>
-  </main>
+  } @else {
+    <!-- Sidebar -->
+    <aside 
+      class="bg-slate-900 text-white flex flex-col transition-all duration-300 ease-in-out shadow-xl z-20"
+      [class.w-64]="isSidebarOpen()"
+      [class.w-20]="!isSidebarOpen()"
+    >
+      <div class="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950">
+        @if (isSidebarOpen()) {
+          <h1 class="font-bold text-xl tracking-tight text-blue-400">{{ t('retailFlow') }}</h1>
+        }
+        <button (click)="toggleSidebar()" class="p-2 rounded hover:bg-slate-800 text-slate-400">
+          <span class="material-icons">menu</span>
+        </button>
+      </div>
+
+      <nav class="flex-1 py-6 space-y-2 px-2 overflow-y-auto">
+        <button (click)="setView('dashboard')" 
+          class="w-full flex items-center p-3 rounded-lg transition-colors group"
+          [class.bg-blue-600]="currentView() === 'dashboard'"
+          [class.text-white]="currentView() === 'dashboard'"
+          [class.text-slate-400]="currentView() !== 'dashboard'"
+          [class.hover:bg-slate-800]="currentView() !== 'dashboard'"
+        >
+          <span class="material-icons text-2xl">dashboard</span>
+          @if (isSidebarOpen()) {
+            <span class="ml-4 font-medium">{{ t('dashboard') }}</span>
+          }
+        </button>
+
+        <button (click)="setView('pos')" 
+          class="w-full flex items-center p-3 rounded-lg transition-colors group"
+          [class.bg-blue-600]="currentView() === 'pos'"
+          [class.text-white]="currentView() === 'pos'"
+          [class.text-slate-400]="currentView() !== 'pos'"
+          [class.hover:bg-slate-800]="currentView() !== 'pos'"
+        >
+          <span class="material-icons text-2xl">point_of_sale</span>
+          @if (isSidebarOpen()) {
+            <span class="ml-4 font-medium">{{ t('pos') }}</span>
+          }
+        </button>
+
+        <button (click)="setView('inventory')" 
+          class="w-full flex items-center p-3 rounded-lg transition-colors group"
+          [class.bg-blue-600]="currentView() === 'inventory'"
+          [class.text-white]="currentView() === 'inventory'"
+          [class.text-slate-400]="currentView() !== 'inventory'"
+          [class.hover:bg-slate-800]="currentView() !== 'inventory'"
+        >
+          <span class="material-icons text-2xl">inventory_2</span>
+          @if (isSidebarOpen()) {
+            <span class="ml-4 font-medium">{{ t('inventory') }}</span>
+          }
+        </button>
+
+        <button (click)="setView('cash')" 
+          class="w-full flex items-center p-3 rounded-lg transition-colors group"
+          [class.bg-blue-600]="currentView() === 'cash'"
+          [class.text-white]="currentView() === 'cash'"
+          [class.text-slate-400]="currentView() !== 'cash'"
+          [class.hover:bg-slate-800]="currentView() !== 'cash'"
+        >
+          <span class="material-icons text-2xl">account_balance_wallet</span>
+          @if (isSidebarOpen()) {
+            <span class="ml-4 font-medium">{{ t('cashControl') }}</span>
+          }
+        </button>
+      </nav>
+      
+      <!-- User Profile & Footer -->
+      <div class="border-t border-slate-800 bg-slate-950">
+        @if (isSidebarOpen()) {
+          <div class="p-4 flex items-center gap-3">
+             <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg border-2 border-slate-800">
+               {{ db.currentUser()?.name?.charAt(0)?.toUpperCase() }}
+             </div>
+             <div class="flex-1 overflow-hidden">
+               <p class="text-sm font-bold text-white truncate">{{ db.currentUser()?.name }}</p>
+               <p class="text-xs text-slate-400">{{ t('seller') }}</p>
+             </div>
+             <button (click)="logout()" class="text-slate-400 hover:text-red-400" [title]="t('logout')">
+               <span class="material-icons">logout</span>
+             </button>
+          </div>
+        } @else {
+           <div class="p-4 flex justify-center">
+             <button (click)="logout()" class="text-slate-400 hover:text-red-400">
+               <span class="material-icons">logout</span>
+             </button>
+           </div>
+        }
+
+        <div class="px-4 pb-4 pt-2 text-xs text-slate-600 flex flex-col gap-2">
+          @if (isSidebarOpen()) {
+            <div class="flex justify-center gap-2">
+              <button (click)="setLang('en')" class="px-2 py-1 rounded text-xs font-bold" [class.bg-slate-800]="translationService.language() === 'en'" [class.text-white]="translationService.language() === 'en'" [class.hover:bg-slate-700]="translationService.language() !== 'en'">EN</button>
+              <button (click)="setLang('es')" class="px-2 py-1 rounded text-xs font-bold" [class.bg-slate-800]="translationService.language() === 'es'" [class.text-white]="translationService.language() === 'es'" [class.hover:bg-slate-700]="translationService.language() !== 'es'">ES</button>
+            </div>
+            <p class="text-center">v1.1.0 • {{ t('online') }}</p>
+          }
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 relative overflow-hidden flex flex-col">
+      <!-- View Container -->
+      <div class="flex-1 overflow-auto bg-slate-50 p-4 md:p-6">
+        @switch (currentView()) {
+          @case ('dashboard') { <app-dashboard /> }
+          @case ('pos') { <app-pos /> }
+          @case ('inventory') { <app-inventory /> }
+          @case ('cash') { <app-cash-control /> }
+        }
+      </div>
+    </main>
+  }
 
 </div>

@@ -11,6 +11,14 @@ const translations = {
     inventory: 'Inventory',
     cashControl: 'Cash Control',
     online: 'Online',
+    // Auth
+    welcomeBack: 'Welcome',
+    whoIsSelling: 'Who is selling today?',
+    enterName: 'Enter your name',
+    login: 'Start Selling',
+    logout: 'Logout',
+    seller: 'Seller',
+    selectUser: 'Select User',
     // Dashboard
     dashboardTitle: 'Dashboard',
     dashboardSubtitle: 'Real-time overview of your retail business.',
@@ -105,6 +113,14 @@ const translations = {
     inventory: 'Inventario',
     cashControl: 'Control de Caja',
     online: 'En Línea',
+    // Auth
+    welcomeBack: 'Bienvenido',
+    whoIsSelling: '¿Quién va a vender hoy?',
+    enterName: 'Ingresa tu nombre',
+    login: 'Ingresar',
+    logout: 'Salir',
+    seller: 'Vendedor',
+    selectUser: 'Seleccionar Usuario',
     // Dashboard
     dashboardTitle: 'Panel de Control',
     dashboardSubtitle: 'Vista general en tiempo real de su negocio.',
@@ -197,7 +213,7 @@ const translations = {
   providedIn: 'root'
 })
 export class TranslationService {
-  language = signal<Language>('en');
+  language = signal<Language>('es'); // Default to ES based on user request context
 
   setLanguage(lang: Language) {
     this.language.set(lang);

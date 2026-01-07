@@ -108,13 +108,21 @@ export class PosComponent implements OnInit, OnDestroy {
   checkout(method: 'CASH' | 'CARD') {
     if (this.cart().length === 0) return;
     
+    const user = this.db.currentUser();
+    if (!user) {
+      alert('Error: No user logged in');
+      return;
+    }
+
     const sale: Sale = {
       id: crypto.randomUUID(),
       timestamp: Date.now(),
       total: this.cartTotal(),
       items: this.cart(),
       paymentMethod: method,
-      shiftId: this.db.activeShift()?.id || null
+      shiftId: this.db.activeShift()?.id || null,
+      userId: user.id,
+      userName: user.name
     };
 
     this.db.recordSale(sale);

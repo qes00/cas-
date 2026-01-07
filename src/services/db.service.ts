@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
-import { Product, Variant, CashShift, Sale } from './data.types';
+import { Product, Variant, CashShift, Sale, User } from './data.types';
 
 @Injectable({
   providedIn: 'root'
@@ -10,6 +10,8 @@ export class DbService {
   variants = signal<Variant[]>([]);
   shifts = signal<CashShift[]>([]);
   sales = signal<Sale[]>([]);
+  users = signal<User[]>([]);
+  currentUser = signal<User | null>(null);
 
   // Computed: Get active shift
   activeShift = computed(() => this.shifts().find(s => s.status === 'OPEN') || null);
@@ -26,6 +28,7 @@ export class DbService {
       localStorage.setItem('rf_variants', JSON.stringify(this.variants()));
       localStorage.setItem('rf_shifts', JSON.stringify(this.shifts()));
       localStorage.setItem('rf_sales', JSON.stringify(this.sales()));
+      localStorage.setItem('rf_users', JSON.stringify(this.users()));
     });
   }
 
@@ -35,10 +38,36 @@ export class DbService {
       this.variants.set(JSON.parse(localStorage.getItem('rf_variants') || '[]'));
       this.shifts.set(JSON.parse(localStorage.getItem('rf_shifts') || '[]'));
       this.sales.set(JSON.parse(localStorage.getItem('rf_sales') || '[]'));
+      this.users.set(JSON.parse(localStorage.getItem('rf_users') || '[]'));
     } catch (e) {
       console.error('Failed to load data', e);
     }
   }
+
+  // --- Auth ---
+
+  login(name: string) {
+    const existingUser = this.users().find(u => u.name.toLowerCase() === name.toLowerCase());
+    
+    if (existingUser) {
+      this.currentUser.set(existingUser);
+    } else {
+      const newUser: User = {
+        id: crypto.randomUUID(),
+        name: name,
+        role: 'SELLER',
+        createdAt: Date.now()
+      };
+      this.users.update(u => [...u, newUser]);
+      this.currentUser.set(newUser);
+    }
+  }
+
+  logout() {
+    this.currentUser.set(null);
+  }
+
+  // --- Products ---
 
   addProduct(product: Product, newVariants: Variant[]) {
     this.products.update(p => [product, ...p]);
@@ -62,6 +91,9 @@ export class DbService {
 
   openShift(startCash: number) {
     if (this.activeShift()) throw new Error('Shift already open');
+    const user = this.currentUser();
+    if (!user) throw new Error('No user logged in. Please log in first.');
+
     const newShift: CashShift = {
       id: crypto.randomUUID(),
       openedAt: Date.now(),
@@ -70,26 +102,43 @@ export class DbService {
       endCashExpected: startCash,
       endCashActual: null,
       status: 'OPEN',
-      movements: []
+      movements: [],
+      userId: user.id,
+      userName: user.name
     };
     this.shifts.update(s => [newShift, ...s]);
   }
 
   closeShift(actualCash: number) {
     const current = this.activeShift();
-    if (!current) throw new Error('No open shift');
+    const user = this.currentUser();
+
+    if (!current) throw new Error('No open shift found to close.');
+    if (!user) throw new Error('You must be logged in to close a shift.');
+
+    // Ensure actualCash is a number
+    const safeActualCash = Number(actualCash) || 0;
     
     const closedShift: CashShift = {
       ...current,
       closedAt: Date.now(),
-      endCashActual: actualCash,
-      status: 'CLOSED'
+      endCashActual: safeActualCash,
+      status: 'CLOSED',
+      closedByUserId: user.id,
+      closedByUserName: user.name
     };
 
+    // Replace the open shift with the closed one
     this.shifts.update(list => list.map(s => s.id === current.id ? closedShift : s));
   }
 
   recordSale(sale: Sale) {
+    const user = this.currentUser();
+    if (!sale.userId && user) {
+      sale.userId = user.id;
+      sale.userName = user.name;
+    }
+
     this.sales.update(s => [sale, ...s]);
     
     // Reduce Stock
@@ -109,7 +158,6 @@ export class DbService {
   }
 
   findVariantByCode(code: string): Variant | undefined {
-    // Search by Barcode or SKU
     return this.variants().find(v => v.barcode === code || v.sku === code);
   }
   
@@ -119,7 +167,6 @@ export class DbService {
 
   private seedData() {
     const shirtId = crypto.randomUUID();
-    const pantsId = crypto.randomUUID();
 
     const shirt: Product = {
       id: shirtId,
