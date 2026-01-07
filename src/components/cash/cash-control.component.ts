@@ -180,14 +180,12 @@ export class CashControlComponent {
   }
 
   closeShift() {
-    // 1. Validate Shift Existence
     const shift = this.activeShift();
     if (!shift) {
       alert("No active shift found.");
       return;
     }
 
-    // 2. Confirm Action
     if (!confirm('Are you sure you want to close this shift?')) {
       return;
     }
@@ -196,22 +194,24 @@ export class CashControlComponent {
       const finalAmount = Number(this.amountInput) || 0;
       const difference = finalAmount - shift.endCashExpected;
       
-      // 3. EXECUTE CLOSE FIRST (CRITICAL)
-      // We close the DB first to ensure the state is saved even if report fails
+      // 1. EXECUTE CLOSE
       this.db.closeShift(finalAmount);
       
-      // 4. Reset Input
+      // 2. Reset Input
       this.amountInput = 0;
       
-      alert('Shift Closed Successfully.');
-
-      // 5. Attempt Report Generation (Wrapped in separate try-catch)
+      // 3. Generate Report
       try {
         this.generateAndDownloadReport(shift, finalAmount, difference);
       } catch (reportError) {
         console.error("Report generation failed:", reportError);
-        // Do not alert error here to avoid confusion since shift IS closed.
       }
+      
+      // 4. FORCE LOGOUT WITHOUT BLOCKING ALERT
+      // Small timeout to ensure download event propagates before view is destroyed
+      setTimeout(() => {
+        this.db.logout();
+      }, 100);
       
     } catch (e: any) {
       console.error(e);
