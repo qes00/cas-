@@ -41,7 +41,6 @@ import { CashShift } from '../../services/data.types';
               <label class="block text-left text-sm font-bold text-slate-700 mb-1">{{ t('openingCash') }}</label>
               <div class="relative">
                 <span class="absolute left-3 top-2 text-slate-400">S/.</span>
-                <!-- Use standard property binding, not signal, for input stability -->
                 <input type="number" [(ngModel)]="amountInput" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
               </div>
             </div>
@@ -106,7 +105,7 @@ import { CashShift } from '../../services/data.types';
         }
       </div>
 
-      <!-- History List (Simplified) -->
+      <!-- History List -->
       @if (db.shifts().length > 0) {
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -116,7 +115,7 @@ import { CashShift } from '../../services/data.types';
             <thead class="bg-slate-50 text-slate-500">
               <tr>
                 <th class="px-6 py-3">{{ t('date') }}</th>
-                <th class="px-6 py-3">Seller</th>
+                <th class="px-6 py-3">User</th>
                 <th class="px-6 py-3">{{ t('status') }}</th>
                 <th class="px-6 py-3 text-right">{{ t('expected') }}</th>
                 <th class="px-6 py-3 text-right">{{ t('actual') }}</th>
@@ -161,7 +160,7 @@ export class CashControlComponent {
   
   activeShift = this.db.activeShift;
   
-  // Use a simple number property to avoid Signal/Model binding conflicts
+  // Property to hold input value
   amountInput: number = 0;
   
   get currentDiff(): number {
@@ -181,28 +180,42 @@ export class CashControlComponent {
   }
 
   closeShift() {
+    // 1. Validate Shift Existence
     const shift = this.activeShift();
-    if (!shift) return;
+    if (!shift) {
+      alert("No active shift found.");
+      return;
+    }
 
-    if (confirm('Are you sure you want to close this shift? This will generate a report.')) {
+    // 2. Confirm Action
+    if (!confirm('Are you sure you want to close this shift?')) {
+      return;
+    }
+
+    try {
+      const finalAmount = Number(this.amountInput) || 0;
+      const difference = finalAmount - shift.endCashExpected;
+      
+      // 3. EXECUTE CLOSE FIRST (CRITICAL)
+      // We close the DB first to ensure the state is saved even if report fails
+      this.db.closeShift(finalAmount);
+      
+      // 4. Reset Input
+      this.amountInput = 0;
+      
+      alert('Shift Closed Successfully.');
+
+      // 5. Attempt Report Generation (Wrapped in separate try-catch)
       try {
-        const finalAmount = Number(this.amountInput);
-        const difference = finalAmount - shift.endCashExpected;
-        
-        // 1. Generate Report Blob
         this.generateAndDownloadReport(shift, finalAmount, difference);
-
-        // 2. Perform DB Closure
-        this.db.closeShift(finalAmount);
-        
-        // 3. Reset
-        this.amountInput = 0;
-        alert('Shift Closed & Report Downloaded.');
-        
-      } catch (e: any) {
-        console.error(e);
-        alert('Error closing shift: ' + e.message);
+      } catch (reportError) {
+        console.error("Report generation failed:", reportError);
+        // Do not alert error here to avoid confusion since shift IS closed.
       }
+      
+    } catch (e: any) {
+      console.error(e);
+      alert('CRITICAL ERROR closing shift: ' + e.message);
     }
   }
 
@@ -245,7 +258,9 @@ export class CashControlComponent {
     const a = document.createElement('a');
     a.href = url;
     a.download = `cierre_caja_${date.toISOString().slice(0,10)}_${shift.id.substring(0,4)}.txt`;
+    document.body.appendChild(a); // Append to body for Firefox support
     a.click();
+    document.body.removeChild(a);
     
     window.URL.revokeObjectURL(url);
   }

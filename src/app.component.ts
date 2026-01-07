@@ -49,15 +49,15 @@ export class AppComponent {
     }
   }
   
-  performLogin() {
-    if (this.loginName().trim()) {
-      this.db.login(this.loginName().trim());
+  // Removed performLogin (Free text login) as users are now fixed/strict
+  
+  selectExistingUser(id: string) {
+    try {
+      this.db.login(id);
       this.loginName.set('');
+    } catch (e: any) {
+      alert(e.message);
     }
-  }
-
-  selectExistingUser(name: string) {
-    this.db.login(name);
   }
 
   logout() {
