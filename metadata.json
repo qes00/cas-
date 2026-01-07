@@ -1,0 +1,7 @@
+{
+  "name": "RetailFlow POS",
+  "description": "Professional Retail POS & Inventory Management System with Multi-Variant Support and Cash Control.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

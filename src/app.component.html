@@ -1,0 +1,92 @@
+<div class="flex h-full w-full bg-slate-100 overflow-hidden">
+  
+  <!-- Sidebar -->
+  <aside 
+    class="bg-slate-900 text-white flex flex-col transition-all duration-300 ease-in-out shadow-xl z-20"
+    [class.w-64]="isSidebarOpen()"
+    [class.w-20]="!isSidebarOpen()"
+  >
+    <div class="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950">
+      @if (isSidebarOpen()) {
+        <h1 class="font-bold text-xl tracking-tight text-blue-400">RetailFlow</h1>
+      }
+      <button (click)="toggleSidebar()" class="p-2 rounded hover:bg-slate-800 text-slate-400">
+        <span class="material-icons">menu</span>
+      </button>
+    </div>
+
+    <nav class="flex-1 py-6 space-y-2 px-2 overflow-y-auto">
+      <button (click)="setView('dashboard')" 
+        class="w-full flex items-center p-3 rounded-lg transition-colors group"
+        [class.bg-blue-600]="currentView() === 'dashboard'"
+        [class.text-white]="currentView() === 'dashboard'"
+        [class.text-slate-400]="currentView() !== 'dashboard'"
+        [class.hover:bg-slate-800]="currentView() !== 'dashboard'"
+      >
+        <span class="material-icons text-2xl">dashboard</span>
+        @if (isSidebarOpen()) {
+          <span class="ml-4 font-medium">Dashboard</span>
+        }
+      </button>
+
+      <button (click)="setView('pos')" 
+        class="w-full flex items-center p-3 rounded-lg transition-colors group"
+        [class.bg-blue-600]="currentView() === 'pos'"
+        [class.text-white]="currentView() === 'pos'"
+        [class.text-slate-400]="currentView() !== 'pos'"
+        [class.hover:bg-slate-800]="currentView() !== 'pos'"
+      >
+        <span class="material-icons text-2xl">point_of_sale</span>
+        @if (isSidebarOpen()) {
+          <span class="ml-4 font-medium">Point of Sale</span>
+        }
+      </button>
+
+      <button (click)="setView('inventory')" 
+        class="w-full flex items-center p-3 rounded-lg transition-colors group"
+        [class.bg-blue-600]="currentView() === 'inventory'"
+        [class.text-white]="currentView() === 'inventory'"
+        [class.text-slate-400]="currentView() !== 'inventory'"
+        [class.hover:bg-slate-800]="currentView() !== 'inventory'"
+      >
+        <span class="material-icons text-2xl">inventory_2</span>
+        @if (isSidebarOpen()) {
+          <span class="ml-4 font-medium">Inventory</span>
+        }
+      </button>
+
+      <button (click)="setView('cash')" 
+        class="w-full flex items-center p-3 rounded-lg transition-colors group"
+        [class.bg-blue-600]="currentView() === 'cash'"
+        [class.text-white]="currentView() === 'cash'"
+        [class.text-slate-400]="currentView() !== 'cash'"
+        [class.hover:bg-slate-800]="currentView() !== 'cash'"
+      >
+        <span class="material-icons text-2xl">account_balance_wallet</span>
+        @if (isSidebarOpen()) {
+          <span class="ml-4 font-medium">Cash Control</span>
+        }
+      </button>
+    </nav>
+    
+    <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+      @if (isSidebarOpen()) {
+        <p>v1.0.0 • Online</p>
+      }
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 relative overflow-hidden flex flex-col">
+    <!-- View Container -->
+    <div class="flex-1 overflow-auto bg-slate-50 p-4 md:p-6">
+      @switch (currentView()) {
+        @case ('dashboard') { <app-dashboard /> }
+        @case ('pos') { <app-pos /> }
+        @case ('inventory') { <app-inventory /> }
+        @case ('cash') { <app-cash-control /> }
+      }
+    </div>
+  </main>
+
+</div>
