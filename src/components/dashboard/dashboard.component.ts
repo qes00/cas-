@@ -1,6 +1,7 @@
 import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DbService } from '../../services/db.service';
+import { TranslationService } from '../../services/translation.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -9,8 +10,8 @@ import { DbService } from '../../services/db.service';
   template: `
     <div class="space-y-6">
       <header class="mb-6">
-        <h2 class="text-3xl font-bold text-slate-800">Dashboard</h2>
-        <p class="text-slate-500">Real-time overview of your retail business.</p>
+        <h2 class="text-3xl font-bold text-slate-800">{{ t('dashboardTitle') }}</h2>
+        <p class="text-slate-500">{{ t('dashboardSubtitle') }}</p>
       </header>
 
       <!-- Stats Grid -->
@@ -22,8 +23,8 @@ import { DbService } from '../../services/db.service';
             <span class="material-icons text-3xl">attach_money</span>
           </div>
           <div>
-            <p class="text-sm font-medium text-slate-500">Total Revenue</p>
-            <p class="text-2xl font-bold text-slate-900">\${{ totalRevenue() | number:'1.2-2' }}</p>
+            <p class="text-sm font-medium text-slate-500">{{ t('totalRevenue') }}</p>
+            <p class="text-2xl font-bold text-slate-900">S/.{{ totalRevenue() | number:'1.2-2' }}</p>
           </div>
         </div>
 
@@ -33,7 +34,7 @@ import { DbService } from '../../services/db.service';
             <span class="material-icons text-3xl">receipt</span>
           </div>
           <div>
-            <p class="text-sm font-medium text-slate-500">Transactions</p>
+            <p class="text-sm font-medium text-slate-500">{{ t('transactions') }}</p>
             <p class="text-2xl font-bold text-slate-900">{{ totalTransactions() }}</p>
           </div>
         </div>
@@ -44,7 +45,7 @@ import { DbService } from '../../services/db.service';
             <span class="material-icons text-3xl">inventory</span>
           </div>
           <div>
-            <p class="text-sm font-medium text-slate-500">Low Stock Items</p>
+            <p class="text-sm font-medium text-slate-500">{{ t('lowStockItems') }}</p>
             <p class="text-2xl font-bold text-slate-900">{{ lowStockCount() }}</p>
           </div>
         </div>
@@ -55,8 +56,8 @@ import { DbService } from '../../services/db.service';
             <span class="material-icons text-3xl">{{ isShiftOpen() ? 'lock_open' : 'lock' }}</span>
           </div>
           <div>
-            <p class="text-sm font-medium text-slate-500">Register Status</p>
-            <p class="text-xl font-bold text-slate-900">{{ isShiftOpen() ? 'Open' : 'Closed' }}</p>
+            <p class="text-sm font-medium text-slate-500">{{ t('registerStatus') }}</p>
+            <p class="text-xl font-bold text-slate-900">{{ isShiftOpen() ? t('open') : t('closed') }}</p>
           </div>
         </div>
       </div>
@@ -64,17 +65,17 @@ import { DbService } from '../../services/db.service';
       <!-- Low Stock Alert List -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-          <h3 class="font-bold text-slate-700">Stock Alerts</h3>
-          <span class="text-xs font-semibold bg-orange-100 text-orange-800 px-2 py-1 rounded-full">Below 5 Units</span>
+          <h3 class="font-bold text-slate-700">{{ t('stockAlerts') }}</h3>
+          <span class="text-xs font-semibold bg-orange-100 text-orange-800 px-2 py-1 rounded-full">{{ t('below5Units') }}</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
             <thead class="bg-slate-50 text-slate-500 font-medium uppercase text-xs">
               <tr>
-                <th class="px-6 py-3">Product</th>
-                <th class="px-6 py-3">Variant</th>
-                <th class="px-6 py-3">SKU</th>
-                <th class="px-6 py-3 text-right">Remaining</th>
+                <th class="px-6 py-3">{{ t('product') }}</th>
+                <th class="px-6 py-3">{{ t('variant') }}</th>
+                <th class="px-6 py-3">{{ t('sku') }}</th>
+                <th class="px-6 py-3 text-right">{{ t('remaining') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -89,7 +90,7 @@ import { DbService } from '../../services/db.service';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="4" class="px-6 py-8 text-center text-slate-400">All stock levels are healthy!</td>
+                  <td colspan="4" class="px-6 py-8 text-center text-slate-400">{{ t('stockHealthy') }}</td>
                 </tr>
               }
             </tbody>
@@ -101,6 +102,7 @@ import { DbService } from '../../services/db.service';
 })
 export class DashboardComponent {
   db = inject(DbService);
+  translationService = inject(TranslationService);
 
   totalRevenue = computed(() => this.db.sales().reduce((sum, s) => sum + s.total, 0));
   totalTransactions = computed(() => this.db.sales().length);
@@ -112,5 +114,9 @@ export class DashboardComponent {
 
   getProductName(pid: string) {
     return this.db.products().find(p => p.id === pid)?.name || 'Unknown';
+  }
+
+  t(key: string): string {
+    return this.translationService.translate(key);
   }
 }

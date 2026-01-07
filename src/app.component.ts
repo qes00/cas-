@@ -5,6 +5,7 @@ import { PosComponent } from './components/pos/pos.component';
 import { CashControlComponent } from './components/cash/cash-control.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { ScannerService } from './services/scanner.service';
+import { TranslationService } from './services/translation.service';
 
 type ViewState = 'dashboard' | 'pos' | 'inventory' | 'cash';
 
@@ -16,6 +17,7 @@ type ViewState = 'dashboard' | 'pos' | 'inventory' | 'cash';
 })
 export class AppComponent {
   scannerService = inject(ScannerService);
+  translationService = inject(TranslationService);
   
   currentView = signal<ViewState>('dashboard');
   
@@ -37,5 +39,13 @@ export class AppComponent {
     if (window.innerWidth < 768) {
       this.isSidebarOpen.set(false);
     }
+  }
+
+  t(key: string): string {
+    return this.translationService.translate(key);
+  }
+
+  setLang(lang: 'en' | 'es') {
+    this.translationService.setLanguage(lang);
   }
 }

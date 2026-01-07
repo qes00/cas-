@@ -1,22 +1,24 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule, NgOptimizedImage } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DbService } from '../../services/db.service';
 import { GeminiService } from '../../services/gemini.service';
 import { ScannerService } from '../../services/scanner.service';
+import { TranslationService } from '../../services/translation.service';
 import { Product, Variant } from '../../services/data.types';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgOptimizedImage],
+  imports: [CommonModule, FormsModule],
   templateUrl: './inventory.component.html'
 })
 export class InventoryComponent implements OnInit, OnDestroy {
   db = inject(DbService);
   gemini = inject(GeminiService);
   scanner = inject(ScannerService);
+  translationService = inject(TranslationService);
 
   showAddModal = signal(false);
   isGenerating = signal(false);
@@ -27,6 +29,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
   newCategory = signal('General');
   newBasePrice = signal(0);
   newDesc = signal('');
+  newImageBase64 = signal<string | null>(null);
+  isImageProcessing = signal(false);
   
   // Matrix Builders
   attributes = signal<{name: string, values: string}[]>([{name: 'Size', values: 'S, M, L'}, {name: 'Color', values: 'Red, Blue'}]);
@@ -71,6 +75,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
     // Reset form
     this.newName.set('');
     this.newDesc.set('');
+    this.newImageBase64.set(null);
   }
 
   // Helper to fix template error with arrow functions
@@ -85,6 +90,57 @@ export class InventoryComponent implements OnInit, OnDestroy {
   removeAttribute(index: number) {
     this.attributes.update(a => a.filter((_, i) => i !== index));
     this.generatePreview();
+  }
+
+  async onFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) {
+      return;
+    }
+    const file = input.files[0];
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+
+    this.isImageProcessing.set(true);
+    try {
+      const webpBase64 = await this.convertToWebP(file);
+      this.newImageBase64.set(webpBase64);
+    } catch (error) {
+      console.error("Image conversion failed", error);
+      alert("Failed to process image. Please try another one.");
+      this.newImageBase64.set(null);
+    } finally {
+      this.isImageProcessing.set(false);
+    }
+  }
+
+  private convertToWebP(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 512;
+          const scaleSize = Math.min(1, MAX_WIDTH / img.width);
+          canvas.width = img.width * scaleSize;
+          canvas.height = img.height * scaleSize;
+  
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject('Could not get canvas context');
+          
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const webpDataUrl = canvas.toDataURL('image/webp', 0.8);
+          resolve(webpDataUrl);
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
   }
 
   generatePreview() {
@@ -161,7 +217,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
       category: this.newCategory(),
       basePrice: this.newBasePrice(),
       attributes: finalAttributes,
-      image: `https://picsum.photos/200?random=${Date.now()}`
+      image: this.newImageBase64() || `https://picsum.photos/200?random=${Date.now()}`
     };
 
     const newVariants: Variant[] = this.previewVariants().map((pv, idx) => ({
@@ -178,5 +234,9 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
     this.db.addProduct(newProduct, newVariants);
     this.closeModal();
+  }
+
+  t(key: string): string {
+    return this.translationService.translate(key);
   }
 }

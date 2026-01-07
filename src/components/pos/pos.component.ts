@@ -1,7 +1,8 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule, NgOptimizedImage } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { DbService } from '../../services/db.service';
 import { ScannerService } from '../../services/scanner.service';
+import { TranslationService } from '../../services/translation.service';
 import { CartItem, Variant, Sale } from '../../services/data.types';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -9,12 +10,13 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-pos',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgOptimizedImage],
+  imports: [CommonModule, FormsModule],
   templateUrl: './pos.component.html'
 })
 export class PosComponent implements OnInit, OnDestroy {
   db = inject(DbService);
   scanner = inject(ScannerService);
+  translationService = inject(TranslationService);
 
   cart = signal<CartItem[]>([]);
   searchQuery = signal('');
@@ -122,5 +124,9 @@ export class PosComponent implements OnInit, OnDestroy {
 
   toggleCamera() {
     this.showScanner.set(!this.showScanner());
+  }
+
+  t(key: string): string {
+    return this.translationService.translate(key);
   }
 }

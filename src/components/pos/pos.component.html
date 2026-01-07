@@ -3,10 +3,10 @@
     <div class="bg-orange-100 p-6 rounded-full text-orange-600 mb-6">
       <span class="material-icons text-6xl">lock</span>
     </div>
-    <h2 class="text-3xl font-bold text-slate-800 mb-2">Register Closed</h2>
-    <p class="text-slate-500 mb-8 max-w-md">You must open a new cash shift before processing sales.</p>
+    <h2 class="text-3xl font-bold text-slate-800 mb-2">{{ t('registerClosed') }}</h2>
+    <p class="text-slate-500 mb-8 max-w-md">{{ t('mustOpenShift') }}</p>
     <button class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition">
-      Go to Cash Control
+      {{ t('goToCashControl') }}
     </button>
   </div>
 } @else {
@@ -22,28 +22,28 @@
           <input 
             type="text" 
             [(ngModel)]="searchQuery" 
-            placeholder="Search product, SKU or barcode..." 
-            class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            [placeholder]="t('searchPlaceholder')" 
+            class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
           >
         </div>
         <button (click)="toggleCamera()" class="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700">
           <span class="material-icons">qr_code_scanner</span>
-          <span class="hidden md:inline">Scan</span>
+          <span class="hidden md:inline">{{ t('scan') }}</span>
         </button>
       </div>
 
       <!-- Scanner Overlay -->
       @if (showScanner()) {
         <div class="bg-black text-white p-4 flex flex-col items-center justify-center animate-in fade-in slide-in-from-top-4">
-          <p class="mb-2 text-sm text-gray-300">Camera Active (Simulated)</p>
+          <p class="mb-2 text-sm text-gray-300">{{ t('cameraActive') }}</p>
           <div class="w-64 h-32 border-2 border-dashed border-green-500 rounded-lg flex items-center justify-center mb-2">
             <span class="animate-pulse text-green-500">Scanning...</span>
           </div>
           <div class="flex gap-2">
              <!-- Simulation Buttons for Demo -->
-             <button (click)="handleScan('1001')" class="px-3 py-1 bg-slate-700 rounded text-xs hover:bg-slate-600">Sim. Barcode 1001</button>
-             <button (click)="handleScan('1002')" class="px-3 py-1 bg-slate-700 rounded text-xs hover:bg-slate-600">Sim. Barcode 1002</button>
-             <button (click)="showScanner.set(false)" class="px-3 py-1 bg-red-600 rounded text-xs hover:bg-red-700">Close</button>
+             <button (click)="handleScan('1001')" class="px-3 py-1 bg-slate-700 rounded text-xs hover:bg-slate-600">{{ t('simBarcode') }} 1001</button>
+             <button (click)="handleScan('1002')" class="px-3 py-1 bg-slate-700 rounded text-xs hover:bg-slate-600">{{ t('simBarcode') }} 1002</button>
+             <button (click)="showScanner.set(false)" class="px-3 py-1 bg-red-600 rounded text-xs hover:bg-red-700">{{ t('close') }}</button>
           </div>
         </div>
       }
@@ -57,9 +57,9 @@
               class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 hover:border-blue-500 hover:shadow-md transition text-left flex flex-col h-full group"
             >
               <div class="aspect-square bg-slate-100 rounded-md mb-3 relative overflow-hidden">
-                <img [ngSrc]="variant.image || 'https://picsum.photos/200'" fill class="object-cover group-hover:scale-105 transition-transform" alt="Product">
+                <img [src]="variant.image || 'https://picsum.photos/200'" class="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="Product">
                 @if (variant.stock < 5) {
-                   <span class="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Low Stock</span>
+                   <span class="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">{{ t('lowStockItems') }}</span>
                 }
               </div>
               <div class="flex-1">
@@ -67,14 +67,14 @@
                 <p class="text-xs text-slate-500 mb-2">{{ variant.attributeSummary }}</p>
               </div>
               <div class="mt-auto flex justify-between items-center">
-                <span class="font-bold text-blue-600">\${{ variant.price }}</span>
+                <span class="font-bold text-blue-600">S/.{{ variant.price }}</span>
                 <span class="text-xs text-slate-400 font-mono">{{ variant.stock }} left</span>
               </div>
             </button>
           } @empty {
             <div class="col-span-full text-center py-12 text-slate-400">
               <span class="material-icons text-4xl mb-2">search_off</span>
-              <p>No products match your search.</p>
+              <p>{{ t('noProductsMatch') }}</p>
             </div>
           }
         </div>
@@ -84,8 +84,8 @@
     <!-- Right: Cart -->
     <div class="w-full lg:w-96 flex flex-col bg-white rounded-xl shadow-lg border border-slate-200">
       <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-        <h3 class="font-bold text-lg text-slate-800">Current Sale</h3>
-        <button (click)="cart.set([])" class="text-red-500 text-sm hover:underline" [disabled]="cart().length === 0">Clear</button>
+        <h3 class="font-bold text-lg text-slate-800">{{ t('currentSale') }}</h3>
+        <button (click)="cart.set([])" class="text-red-500 text-sm hover:underline" [disabled]="cart().length === 0">{{ t('clear') }}</button>
       </div>
 
       <div class="flex-1 overflow-y-auto p-4 space-y-4">
@@ -111,15 +111,15 @@
                   <span class="font-bold text-sm w-6 text-center">{{ item.quantity }}</span>
                   <button (click)="updateQuantity(item.variantId, 1)" class="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:bg-slate-200">+</button>
                 </div>
-                <span class="font-bold text-slate-800">\${{ item.price * item.quantity | number:'1.2-2' }}</span>
+                <span class="font-bold text-slate-800">S/.{{ item.price * item.quantity | number:'1.2-2' }}</span>
               </div>
             </div>
           </div>
         } @empty {
           <div class="flex flex-col items-center justify-center h-full text-slate-400">
             <span class="material-icons text-6xl mb-4 opacity-20">shopping_cart</span>
-            <p>Cart is empty</p>
-            <p class="text-sm">Scan items or click to add</p>
+            <p>{{ t('cartEmpty') }}</p>
+            <p class="text-sm">{{ t('cartEmptySub') }}</p>
           </div>
         }
       </div>
@@ -127,12 +127,12 @@
       <!-- Totals -->
       <div class="p-6 bg-slate-50 border-t border-slate-200">
         <div class="flex justify-between items-center mb-4">
-          <span class="text-slate-500">Subtotal</span>
-          <span class="font-bold">\${{ cartTotal() | number:'1.2-2' }}</span>
+          <span class="text-slate-500">{{ t('subtotal') }}</span>
+          <span class="font-bold">S/.{{ cartTotal() | number:'1.2-2' }}</span>
         </div>
         <div class="flex justify-between items-center mb-6 text-xl">
-          <span class="font-bold text-slate-800">Total</span>
-          <span class="font-bold text-blue-600">\${{ cartTotal() | number:'1.2-2' }}</span>
+          <span class="font-bold text-slate-800">{{ t('total') }}</span>
+          <span class="font-bold text-blue-600">S/.{{ cartTotal() | number:'1.2-2' }}</span>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -142,7 +142,7 @@
             class="flex items-center justify-center gap-2 bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-green-200"
           >
             <span class="material-icons">payments</span>
-            Cash
+            {{ t('cash') }}
           </button>
           <button 
             (click)="checkout('CARD')"
@@ -150,7 +150,7 @@
             class="flex items-center justify-center gap-2 bg-slate-800 text-white py-4 rounded-lg font-bold hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-slate-300"
           >
             <span class="material-icons">credit_card</span>
-            Card
+            {{ t('card') }}
           </button>
         </div>
       </div>
