@@ -1,3 +1,4 @@
+
 @if (!shiftOpen()) {
   <div class="h-full flex flex-col items-center justify-center text-center p-8">
     <div class="bg-orange-100 p-6 rounded-full text-orange-600 mb-6">
@@ -135,7 +136,7 @@
           <span class="font-bold text-blue-600">S/.{{ cartTotal() | number:'1.2-2' }}</span>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button 
             (click)="checkout('CASH')"
             [disabled]="cart().length === 0"

@@ -8,6 +8,7 @@ import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { ScannerService } from './services/scanner.service';
 import { TranslationService } from './services/translation.service';
 import { DbService } from './services/db.service';
+import { User } from './services/data.types';
 
 type ViewState = 'dashboard' | 'pos' | 'inventory' | 'cash';
 
@@ -26,7 +27,9 @@ export class AppComponent {
   isSidebarOpen = signal(true);
   
   // Login State
-  loginName = signal('');
+  selectedUserForLogin = signal<User | null>(null);
+  passwordInput = signal('');
+  loginError = signal('');
   
   // Global Keydown for Barcode Scanner Hardware Emulation
   @HostListener('window:keydown', ['$event'])
@@ -34,6 +37,9 @@ export class AppComponent {
     // Only handle scanner if logged in
     if (this.db.currentUser()) {
        this.scannerService.handleKeyInput(event);
+    } else if (this.selectedUserForLogin() && event.key === 'Enter') {
+      // Allow Enter key to submit password
+      this.confirmLogin();
     }
   }
 
@@ -49,15 +55,36 @@ export class AppComponent {
     }
   }
   
-  // Removed performLogin (Free text login) as users are now fixed/strict
-  
-  selectExistingUser(id: string) {
+  // --- Auth Flow ---
+
+  initiateLogin(user: User) {
+    this.selectedUserForLogin.set(user);
+    this.passwordInput.set('');
+    this.loginError.set('');
+  }
+
+  confirmLogin() {
+    const user = this.selectedUserForLogin();
+    const pass = this.passwordInput();
+
+    if (!user) return;
+
     try {
-      this.db.login(id);
-      this.loginName.set('');
+      this.db.login(user.id, pass);
+      // Success: reset state
+      this.selectedUserForLogin.set(null);
+      this.passwordInput.set('');
+      this.loginError.set('');
     } catch (e: any) {
-      alert(e.message);
+      this.loginError.set(e.message || this.t('invalidPassword'));
+      // Shake animation trigger logic could go here
     }
+  }
+
+  cancelLogin() {
+    this.selectedUserForLogin.set(null);
+    this.passwordInput.set('');
+    this.loginError.set('');
   }
 
   logout() {

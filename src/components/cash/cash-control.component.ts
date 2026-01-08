@@ -1,16 +1,16 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DbService } from '../../services/db.service';
 import { TranslationService } from '../../services/translation.service';
-import { CashShift } from '../../services/data.types';
+import { CashShift, Expense } from '../../services/data.types';
 
 @Component({
   selector: 'app-cash-control',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="max-w-4xl mx-auto space-y-6">
+    <div class="max-w-6xl mx-auto space-y-6">
       
       <!-- Header -->
       <div class="flex justify-between items-center">
@@ -50,9 +50,11 @@ import { CashShift } from '../../services/data.types';
             </button>
           </div>
         } @else {
-          <!-- CLOSE SHIFT UI -->
-          <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="space-y-6">
+          <!-- OPEN SHIFT DASHBOARD -->
+          <div class="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+            
+            <!-- LEFT: Shift Details & Close -->
+            <div class="flex-1 p-6 space-y-6">
               <div>
                 <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">{{ t('shiftInfo') }}</span>
                 <div class="mt-2 space-y-2">
@@ -70,7 +72,7 @@ import { CashShift } from '../../services/data.types';
                    </div>
                    <div class="flex justify-between pt-2 border-t border-slate-100">
                      <span class="text-slate-800 font-bold">{{ t('expectedCash') }}</span>
-                     <span class="font-mono font-bold text-lg text-blue-600">S/.{{ activeShift()?.endCashExpected | number:'1.2-2' }}</span>
+                     <span class="font-mono font-bold text-2xl text-blue-600">S/.{{ activeShift()?.endCashExpected | number:'1.2-2' }}</span>
                    </div>
                 </div>
               </div>
@@ -78,34 +80,166 @@ import { CashShift } from '../../services/data.types';
               <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-sm text-yellow-800">
                 <p><strong>{{ t('blindCount') }}</strong></p>
               </div>
+
+              <div class="pt-4 border-t border-slate-100">
+                 <h3 class="font-bold text-lg text-slate-800 mb-4">{{ t('closeShift') }}</h3>
+                 
+                 <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('actualCashCounted') }}</label>
+                    <div class="relative">
+                      <span class="absolute left-3 top-2 text-slate-400">S/.</span>
+                      <input type="number" [(ngModel)]="amountInput" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none bg-white">
+                    </div>
+                 </div>
+
+                 @if (currentDiff !== 0 && amountInput > 0) {
+                   <div class="text-sm font-bold mb-4" [class.text-red-500]="currentDiff < 0" [class.text-green-500]="currentDiff > 0">
+                      {{ t('difference') }}: {{ currentDiff > 0 ? '+' : '' }}S/.{{ currentDiff | number:'1.2-2' }}
+                   </div>
+                 }
+
+                 <button (click)="closeShift()" class="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-lg shadow-red-200">
+                    {{ t('closeAndPrint') }}
+                 </button>
+              </div>
             </div>
 
-            <div class="flex flex-col justify-center space-y-4 border-t md:border-t-0 md:border-l border-slate-100 pt-6 md:pt-0 md:pl-8">
-               <h3 class="font-bold text-lg text-slate-800">{{ t('closeShift') }}</h3>
+            <!-- RIGHT: Tabs (Expenses / Sales) -->
+            <div class="flex-1 p-6 bg-slate-50 flex flex-col">
                
-               <div>
-                  <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('actualCashCounted') }}</label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-2 text-slate-400">S/.</span>
-                    <input type="number" [(ngModel)]="amountInput" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none bg-white">
-                  </div>
+               <!-- Tabs -->
+               <div class="flex gap-2 mb-4 bg-white p-1 rounded-lg border border-slate-200">
+                 <button 
+                   (click)="currentView.set('expenses')" 
+                   class="flex-1 py-2 rounded-md text-sm font-bold transition-colors"
+                   [class.bg-slate-100]="currentView() === 'expenses'"
+                   [class.text-slate-800]="currentView() === 'expenses'"
+                   [class.text-slate-500]="currentView() !== 'expenses'"
+                 >
+                   {{ t('expenses') }}
+                 </button>
+                 <button 
+                   (click)="currentView.set('sales')" 
+                   class="flex-1 py-2 rounded-md text-sm font-bold transition-colors"
+                   [class.bg-slate-100]="currentView() === 'sales'"
+                   [class.text-slate-800]="currentView() === 'sales'"
+                   [class.text-slate-500]="currentView() !== 'sales'"
+                 >
+                   {{ t('sales') }}
+                 </button>
                </div>
 
-               @if (currentDiff !== 0 && amountInput > 0) {
-                 <div class="text-sm font-bold" [class.text-red-500]="currentDiff < 0" [class.text-green-500]="currentDiff > 0">
-                    {{ t('difference') }}: {{ currentDiff > 0 ? '+' : '' }}S/.{{ currentDiff | number:'1.2-2' }}
-                 </div>
-               }
+               @if (currentView() === 'expenses') {
+                   <div class="flex justify-between items-center mb-4 animate-in fade-in">
+                     <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                       <span class="material-icons text-orange-600">money_off</span>
+                       {{ t('expenses') }}
+                     </h3>
+                     <span class="text-sm font-bold text-slate-600 bg-white px-2 py-1 rounded border border-slate-200">
+                       {{ t('total') }}: S/.{{ totalExpenses() | number:'1.2-2' }}
+                     </span>
+                   </div>
 
-               <button (click)="closeShift()" class="bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-lg shadow-red-200">
-                  {{ t('closeAndPrint') }}
-               </button>
+                   <!-- Expense Form -->
+                   <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm mb-6 animate-in fade-in">
+                     <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label class="block text-xs font-bold text-slate-500 mb-1">{{ t('amount') }}</label>
+                          <input type="number" [(ngModel)]="newExpenseAmount" class="w-full border border-slate-300 rounded p-2 text-sm bg-slate-50">
+                        </div>
+                        <div>
+                          <label class="block text-xs font-bold text-slate-500 mb-1">{{ t('category') }}</label>
+                          <select [(ngModel)]="newExpenseCategory" class="w-full border border-slate-300 rounded p-2 text-sm bg-slate-50">
+                            <option value="SUPPLIES">{{ t('catSupplies') }}</option>
+                            <option value="FOOD">{{ t('catFood') }}</option>
+                            <option value="SERVICES">{{ t('catServices') }}</option>
+                            <option value="OTHER">{{ t('catOther') }}</option>
+                          </select>
+                        </div>
+                     </div>
+                     <div class="mb-3">
+                       <label class="block text-xs font-bold text-slate-500 mb-1">{{ t('description') }}</label>
+                       <input type="text" [(ngModel)]="newExpenseDesc" class="w-full border border-slate-300 rounded p-2 text-sm bg-slate-50" placeholder="e.g. Lunch">
+                     </div>
+                     <button (click)="addExpense()" class="w-full bg-orange-600 text-white py-2 rounded font-bold text-sm hover:bg-orange-700">
+                       {{ t('saveExpense') }}
+                     </button>
+                   </div>
+
+                   <!-- Expense List -->
+                   <div class="flex-1 overflow-hidden flex flex-col animate-in fade-in">
+                      <div class="space-y-2 flex-1 overflow-y-auto">
+                        @for (exp of currentShiftExpenses(); track exp.id) {
+                          <div class="flex justify-between items-center p-3 bg-white border border-slate-200 rounded shadow-sm hover:border-red-300 transition-colors group">
+                            <div class="flex-1">
+                              <p class="font-bold text-sm text-slate-800">{{ exp.description }}</p>
+                              <p class="text-xs text-slate-500">{{ exp.category }} • {{ exp.userName }}</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                              <span class="font-bold text-red-600">-S/.{{ exp.amount | number:'1.2-2' }}</span>
+                              <button (click)="deleteExpense(exp.id)" class="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100" [title]="t('delete')">
+                                <span class="material-icons text-lg">delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        } @empty {
+                          <div class="border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center text-slate-400">
+                            <span class="material-icons mb-2">receipt_long</span>
+                            <p class="text-sm italic">{{ t('noExpenses') }}</p>
+                          </div>
+                        }
+                      </div>
+                   </div>
+               } @else {
+                   <!-- SALES VIEW -->
+                   <div class="flex justify-between items-center mb-4 animate-in fade-in">
+                     <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                       <span class="material-icons text-blue-600">receipt</span>
+                       {{ t('sales') }}
+                     </h3>
+                     <span class="text-sm font-bold text-slate-600 bg-white px-2 py-1 rounded border border-slate-200">
+                       {{ t('total') }}: S/.{{ totalSales() | number:'1.2-2' }}
+                     </span>
+                   </div>
+
+                   <div class="flex-1 overflow-hidden flex flex-col animate-in fade-in">
+                      <div class="space-y-2 flex-1 overflow-y-auto">
+                        @for (sale of currentShiftSales(); track sale.id) {
+                          <div class="p-3 bg-white border border-slate-200 rounded shadow-sm hover:border-blue-300 transition-colors">
+                            <div class="flex justify-between items-start mb-2">
+                              <div>
+                                <p class="font-bold text-sm text-slate-800">{{ sale.timestamp | date:'mediumTime' }}</p>
+                                <p class="text-xs text-slate-500">
+                                  {{ sale.paymentMethod }} • {{ sale.userName }}
+                                </p>
+                              </div>
+                              <span class="font-bold text-blue-600">S/.{{ sale.total | number:'1.2-2' }}</span>
+                            </div>
+                            <!-- Detailed Items within Sales Ticket -->
+                            <div class="bg-slate-50 p-2 rounded text-xs text-slate-600 space-y-1">
+                               @for (item of sale.items; track item.variantId) {
+                                 <div class="flex justify-between">
+                                    <span class="truncate pr-2">{{ item.quantity }}x {{ item.productName }}</span>
+                                    <span>{{ (item.price * item.quantity) | number:'1.2-2' }}</span>
+                                 </div>
+                               }
+                            </div>
+                          </div>
+                        } @empty {
+                          <div class="border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center text-slate-400">
+                            <span class="material-icons mb-2">shopping_bag</span>
+                            <p class="text-sm italic">{{ t('noSales') }}</p>
+                          </div>
+                        }
+                      </div>
+                   </div>
+               }
             </div>
           </div>
         }
       </div>
 
-      <!-- History List -->
+      <!-- History List (Global) -->
       @if (db.shifts().length > 0) {
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -160,13 +294,64 @@ export class CashControlComponent {
   
   activeShift = this.db.activeShift;
   
-  // Property to hold input value
+  // View State (Expenses vs Sales)
+  currentView = signal<'expenses' | 'sales'>('expenses');
+  
+  // Property to hold closing cash input value
   amountInput: number = 0;
+
+  // Expense Form Props
+  newExpenseAmount = 0;
+  newExpenseCategory: Expense['category'] = 'SUPPLIES';
+  newExpenseDesc = '';
   
   get currentDiff(): number {
     const shift = this.activeShift();
     if (!shift) return 0;
     return this.amountInput - shift.endCashExpected;
+  }
+
+  currentShiftExpenses = computed(() => {
+    const shift = this.activeShift();
+    if (!shift) return [];
+    return this.db.expenses().filter(e => e.shiftId === shift.id).sort((a,b) => b.timestamp - a.timestamp);
+  });
+  
+  // New computed for detailed sales list
+  currentShiftSales = computed(() => {
+    const shift = this.activeShift();
+    if (!shift) return [];
+    return this.db.sales().filter(s => s.shiftId === shift.id).sort((a,b) => b.timestamp - a.timestamp);
+  });
+  
+  totalExpenses = computed(() => {
+    return this.currentShiftExpenses().reduce((sum, e) => sum + e.amount, 0);
+  });
+  
+  totalSales = computed(() => {
+    return this.currentShiftSales().reduce((sum, s) => sum + s.total, 0);
+  });
+
+  addExpense() {
+    try {
+      this.db.addExpense(this.newExpenseAmount, this.newExpenseCategory, this.newExpenseDesc);
+      // Reset form
+      this.newExpenseAmount = 0;
+      this.newExpenseDesc = '';
+      // No alert needed for better UX, visualized in list
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
+  deleteExpense(id: string) {
+    if (confirm(this.t('confirmDeleteExpense'))) {
+      try {
+        this.db.deleteExpense(id);
+      } catch (e: any) {
+        alert(e.message);
+      }
+    }
   }
 
   openShift() {
@@ -194,25 +379,19 @@ export class CashControlComponent {
       const finalAmount = Number(this.amountInput) || 0;
       const difference = finalAmount - shift.endCashExpected;
       
-      // 1. EXECUTE CLOSE
+      // Close logic
       this.db.closeShift(finalAmount);
-      
-      // 2. Reset Input
       this.amountInput = 0;
       
-      // 3. Generate Report
       try {
         this.generateAndDownloadReport(shift, finalAmount, difference);
       } catch (reportError) {
         console.error("Report generation failed:", reportError);
       }
       
-      // 4. FORCE LOGOUT WITHOUT BLOCKING ALERT
-      // Small timeout to ensure download event propagates before view is destroyed
-      setTimeout(() => {
-        this.db.logout();
-      }, 100);
-      
+      alert('Shift Closed Successfully. Closing session...');
+      this.db.logout();
+
     } catch (e: any) {
       console.error(e);
       alert('CRITICAL ERROR closing shift: ' + e.message);
@@ -223,31 +402,82 @@ export class CashControlComponent {
     const currentUser = this.db.currentUser();
     const date = new Date();
     
+    // 1. Calculate Aggregates
+    const shiftSales = this.db.sales().filter(s => s.shiftId === shift.id);
+    const shiftExpenses = this.db.expenses().filter(e => e.shiftId === shift.id);
+    
+    const totalSalesCash = shiftSales.filter(s => s.paymentMethod === 'CASH').reduce((sum, s) => sum + s.total, 0);
+    const totalSalesCard = shiftSales.filter(s => s.paymentMethod === 'CARD').reduce((sum, s) => sum + s.total, 0);
+    const totalExpenses = shiftExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+    // 2. Itemized Sales Audit
+    const itemMap = new Map<string, {name: string, sku: string, qty: number, subtotal: number}>();
+    
+    shiftSales.forEach(sale => {
+      sale.items.forEach(item => {
+        if (!itemMap.has(item.variantId)) {
+          itemMap.set(item.variantId, {
+            name: item.productName,
+            sku: item.sku,
+            qty: 0,
+            subtotal: 0
+          });
+        }
+        const entry = itemMap.get(item.variantId)!;
+        entry.qty += item.quantity;
+        entry.subtotal += (item.price * item.quantity);
+      });
+    });
+
     const lines = [
       "==========================================",
-      "       RETAIL FLOW - REPORTE DE CAJA      ",
+      "     SOPHIE POS - REPORTE DE CIERRE       ",
       "==========================================",
-      `Fecha Reporte: ${date.toLocaleString()}`,
       `ID Turno:      ${shift.id.substring(0, 8)}`,
-      "------------------------------------------",
-      "DETALLES DEL USUARIO",
-      `Apertura por:  ${shift.userName}`,
-      `Cierre por:    ${currentUser?.name || 'Desconocido'}`,
-      "------------------------------------------",
-      "TIEMPO",
-      `Inicio:        ${new Date(shift.openedAt).toLocaleString()}`,
-      `Fin:           ${date.toLocaleString()}`,
-      "------------------------------------------",
-      "RESUMEN DE EFECTIVO (PEN)",
-      `Base Inicial:       S/. ${shift.startCash.toFixed(2)}`,
-      `Ventas (Efectivo):  S/. ${(shift.endCashExpected - shift.startCash).toFixed(2)}`,
-      "------------------------------------------",
-      `TOTAL ESPERADO:     S/. ${shift.endCashExpected.toFixed(2)}`,
-      `TOTAL REAL (Caja):  S/. ${actual.toFixed(2)}`,
-      "------------------------------------------",
-      `DIFERENCIA:         S/. ${diff.toFixed(2)}`,
+      `Fecha:         ${date.toLocaleDateString()}`,
+      `Hora Cierre:   ${date.toLocaleTimeString()}`,
+      `Responsable:   ${shift.userName} -> ${currentUser?.name}`,
       "==========================================",
-      diff === 0 ? "             BALANCE EXACTO               " : (diff < 0 ? "           FALTANTE DE CAJA               " : "           SOBRANTE DE CAJA               "),
+      " BALANCE FINANCIERO",
+      "------------------------------------------",
+      ` (+) Fondo Inicial:      S/. ${shift.startCash.toFixed(2)}`,
+      ` (+) Ventas Efectivo:    S/. ${totalSalesCash.toFixed(2)}`,
+      ` (-) Gastos/Salidas:     S/. ${totalExpenses.toFixed(2)}`,
+      "------------------------------------------",
+      ` (=) Efectivo Esperado:  S/. ${shift.endCashExpected.toFixed(2)}`,
+      `     Efectivo Real:      S/. ${actual.toFixed(2)}`,
+      `     DIFERENCIA:         S/. ${diff.toFixed(2)}`,
+      "------------------------------------------",
+      ` (*) Ventas Tarjeta:     S/. ${totalSalesCard.toFixed(2)}`,
+      "==========================================",
+      " DETALLE DE GASTOS (Caja Chica)",
+      "------------------------------------------",
+      ...shiftExpenses.map(e => 
+        ` [${new Date(e.timestamp).toLocaleTimeString()}] ${e.category.padEnd(8)} S/.${e.amount.toFixed(2)} - ${e.description}`
+      ),
+      shiftExpenses.length === 0 ? " (Sin gastos registrados)" : "",
+      "------------------------------------------",
+      ` TOTAL GASTOS:           S/. ${totalExpenses.toFixed(2)}`,
+      "==========================================",
+      " DETALLE DE VENTAS (TICKETS)",
+      "------------------------------------------",
+      ...shiftSales.map(s => {
+          const t = new Date(s.timestamp).toLocaleTimeString();
+          const head = ` [${t}] ${s.paymentMethod} | S/.${s.total.toFixed(2)} | ${s.userName}`;
+          const body = s.items.map(i => `     ${i.quantity}x ${i.productName} (${i.attributeSummary})`).join('\n');
+          return `${head}\n${body}\n- - - - - - - - - - - - - - - - - - - - -`;
+      }),
+      shiftSales.length === 0 ? " (Sin ventas registradas)" : "",
+      "==========================================",
+      " AUDITORIA DE PRODUCTOS VENDIDOS (AGRUPADO)",
+      "------------------------------------------",
+      " SKU       | QTY | SUBTOTAL  | PRODUCTO",
+      "------------------------------------------",
+      ...Array.from(itemMap.values()).map(i => 
+        ` ${i.sku.padEnd(10)}| ${i.qty.toString().padEnd(4)}| S/.${i.subtotal.toFixed(2).padEnd(6)}| ${i.name}`
+      ),
+      "==========================================",
+      diff === 0 ? "           BALANCE EXACTO                 " : "          REVISAR DIFERENCIAS             ",
       "=========================================="
     ];
 
@@ -257,8 +487,8 @@ export class CashControlComponent {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cierre_caja_${date.toISOString().slice(0,10)}_${shift.id.substring(0,4)}.txt`;
-    document.body.appendChild(a); // Append to body for Firefox support
+    a.download = `Cierre_${date.toISOString().slice(0,10)}_${shift.userName}.txt`;
+    document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     

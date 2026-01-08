@@ -5,7 +5,7 @@ type Language = 'en' | 'es';
 const translations = {
   en: {
     // General & Nav
-    retailFlow: 'RetailFlow',
+    retailFlow: 'Sophie POS-Control',
     dashboard: 'Dashboard',
     pos: 'Point of Sale',
     inventory: 'Inventory',
@@ -19,10 +19,15 @@ const translations = {
     logout: 'Logout',
     seller: 'Seller',
     selectUser: 'Select User',
+    password: 'Password',
+    enterPassword: 'Enter Password',
+    invalidPassword: 'Invalid Password',
+    back: 'Back',
     // Dashboard
     dashboardTitle: 'Dashboard',
     dashboardSubtitle: 'Real-time overview of your retail business.',
     totalRevenue: 'Total Revenue',
+    weeklyRevenue: 'Weekly Revenue',
     transactions: 'Transactions',
     lowStockItems: 'Low Stock Items',
     registerStatus: 'Register Status',
@@ -35,6 +40,7 @@ const translations = {
     sku: 'SKU',
     remaining: 'Remaining',
     stockHealthy: 'All stock levels are healthy!',
+    downloadWeeklyReport: 'Download Weekly Report',
     // POS
     registerClosed: 'Register Closed',
     mustOpenShift: 'You must open a new cash shift before processing sales.',
@@ -79,9 +85,9 @@ const translations = {
     priceOverride: 'Price Override',
     initialStock: 'Initial Stock',
     auto: 'Auto',
-    // Cash Control
+    // Cash Control & Expenses
     cashControlTitle: 'Cash Control',
-    cashControlSubtitle: 'Manage daily shifts and cash flow.',
+    cashControlSubtitle: 'Manage daily shifts, expenses, and cash flow.',
     currentStatus: 'Current Status',
     shiftOpen: 'SHIFT OPEN',
     shiftClosed: 'SHIFT CLOSED',
@@ -104,10 +110,29 @@ const translations = {
     expected: 'Expected',
     actual: 'Actual',
     diff: 'Diff',
+    // Expenses & Sales Details
+    expenses: 'Expenses',
+    sales: 'Sales',
+    addExpense: 'Add Expense',
+    amount: 'Amount',
+    category: 'Category',
+    saveExpense: 'Save Expense',
+    catSupplies: 'Supplies',
+    catFood: 'Food',
+    catServices: 'Services',
+    catOther: 'Other',
+    noExpenses: 'No expenses recorded for this shift.',
+    noSales: 'No sales recorded for this shift.',
+    expenseAdded: 'Expense added successfully.',
+    totalExpenses: 'Total Expenses',
+    totalSales: 'Total Sales',
+    confirmDeleteExpense: 'Are you sure you want to delete this expense? The amount will be returned to the expected cash.',
+    delete: 'Delete',
+    items: 'items',
   },
   es: {
     // General & Nav
-    retailFlow: 'RetailFlow',
+    retailFlow: 'Sophie POS-Control',
     dashboard: 'Panel',
     pos: 'Punto de Venta',
     inventory: 'Inventario',
@@ -121,10 +146,15 @@ const translations = {
     logout: 'Salir',
     seller: 'Vendedor',
     selectUser: 'Seleccionar Usuario',
+    password: 'Contraseña',
+    enterPassword: 'Ingrese Contraseña',
+    invalidPassword: 'Contraseña Incorrecta',
+    back: 'Atrás',
     // Dashboard
     dashboardTitle: 'Panel de Control',
     dashboardSubtitle: 'Vista general en tiempo real de su negocio.',
     totalRevenue: 'Ingresos Totales',
+    weeklyRevenue: 'Ingresos Semanales',
     transactions: 'Transacciones',
     lowStockItems: 'Items con Poco Stock',
     registerStatus: 'Estado de la Caja',
@@ -137,6 +167,7 @@ const translations = {
     sku: 'SKU',
     remaining: 'Restante',
     stockHealthy: '¡Todos los niveles de stock están bien!',
+    downloadWeeklyReport: 'Descargar Reporte Semanal',
     // POS
     registerClosed: 'Caja Cerrada',
     mustOpenShift: 'Debe abrir un nuevo turno de caja antes de procesar ventas.',
@@ -154,7 +185,7 @@ const translations = {
     subtotal: 'Subtotal',
     total: 'Total',
     cash: 'Efectivo',
-    card: 'Tarjeta',
+    card: 'Tarjeta/ Yape',
     // Inventory
     inventoryTitle: 'Inventario',
     scanOrSearch: 'Escanear código o buscar...',
@@ -181,9 +212,9 @@ const translations = {
     priceOverride: 'Sobrescribir Precio',
     initialStock: 'Stock Inicial',
     auto: 'Auto',
-    // Cash Control
+    // Cash Control & Expenses
     cashControlTitle: 'Control de Caja',
-    cashControlSubtitle: 'Gestionar turnos diarios y flujo de efectivo.',
+    cashControlSubtitle: 'Gestionar turnos, gastos y flujo de efectivo.',
     currentStatus: 'Estado Actual',
     shiftOpen: 'TURNO ABIERTO',
     shiftClosed: 'TURNO CERRADO',
@@ -206,6 +237,25 @@ const translations = {
     expected: 'Esperado',
     actual: 'Real',
     diff: 'Dif',
+    // Expenses & Sales Details
+    expenses: 'Gastos',
+    sales: 'Ventas',
+    addExpense: 'Registrar Gasto',
+    amount: 'Monto',
+    category: 'Categoría',
+    saveExpense: 'Guardar Gasto',
+    catSupplies: 'Insumos',
+    catFood: 'Alimentos',
+    catServices: 'Servicios',
+    catOther: 'Otros',
+    noExpenses: 'No hay gastos registrados en este turno.',
+    noSales: 'No hay ventas registradas en este turno.',
+    expenseAdded: 'Gasto registrado correctamente.',
+    totalExpenses: 'Total Gastos',
+    totalSales: 'Total Ventas',
+    confirmDeleteExpense: '¿Estás seguro de eliminar este gasto? El monto regresará al efectivo esperado.',
+    delete: 'Eliminar',
+    items: 'items',
   }
 };
 

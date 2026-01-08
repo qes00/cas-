@@ -24,6 +24,9 @@ export class InventoryComponent implements OnInit, OnDestroy {
   isGenerating = signal(false);
   searchQuery = signal('');
 
+  // Editing State
+  editingProductId = signal<string | null>(null);
+
   // Form State
   newName = signal('');
   newCategory = signal('General');
@@ -66,16 +69,56 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   openModal() {
+    // Clean state for new product
+    this.editingProductId.set(null);
+    this.newName.set('');
+    this.newDesc.set('');
+    this.newBasePrice.set(0);
+    this.newCategory.set('General');
+    this.newImageBase64.set(null);
+    this.attributes.set([{name: 'Size', values: 'S, M, L'}, {name: 'Color', values: 'Red, Blue'}]);
+    
     this.showAddModal.set(true);
     this.generatePreview();
   }
 
+  editProduct(product: Product) {
+    this.editingProductId.set(product.id);
+    this.newName.set(product.name);
+    this.newDesc.set(product.description);
+    this.newBasePrice.set(product.basePrice);
+    this.newCategory.set(product.category);
+    this.newImageBase64.set(product.image || null);
+
+    // Reconstruct Attributes for the Form (convert arrays back to CSV string)
+    if (product.attributes && product.attributes.length > 0) {
+      const formAttributes = product.attributes.map(a => ({
+        name: a.name,
+        values: a.values.join(', ')
+      }));
+      this.attributes.set(formAttributes);
+    } else {
+      this.attributes.set([]);
+    }
+
+    // Load Existing Variants into Preview
+    const existingVariants = this.db.getVariantsForProduct(product.id);
+    const mappedVariants = existingVariants.map(v => ({
+      id: v.id, // Keep ID for update
+      sku: v.sku,
+      price: v.price,
+      stock: v.stock,
+      attributeSummary: v.attributeSummary,
+      attributeValues: v.attributeValues
+    }));
+    
+    this.previewVariants.set(mappedVariants);
+    this.showAddModal.set(true);
+  }
+
   closeModal() {
     this.showAddModal.set(false);
-    // Reset form
-    this.newName.set('');
-    this.newDesc.set('');
-    this.newImageBase64.set(null);
+    this.editingProductId.set(null);
   }
 
   // Helper to fix template error with arrow functions
@@ -144,6 +187,9 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   generatePreview() {
+    // If editing and we haven't touched attributes, we might want to keep existing variants
+    // But for simplicity, we regenerate if attributes change.
+    
     // Cartesian Product Logic
     const attrs = this.attributes().filter(a => a.name && a.values);
     if (attrs.length === 0) {
@@ -171,7 +217,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
     const combinations = cartesian(valueArrays);
     
-    const variants = combinations.map(combo => {
+    const variants = combinations.map((combo, idx) => {
       const summaryParts: string[] = [];
       const attrValues: Record<string, string> = {};
       
@@ -180,10 +226,16 @@ export class InventoryComponent implements OnInit, OnDestroy {
         attrValues[attr.name] = combo[idx];
       });
 
+      // Try to preserve existing values if editing (Basic matching by summary)
+      const existing = this.editingProductId() 
+         ? this.db.getVariantsForProduct(this.editingProductId()!).find(v => v.attributeSummary === summaryParts.join(', '))
+         : null;
+
       return {
-        sku: '', // To be filled by user or auto
-        price: this.newBasePrice(),
-        stock: 0,
+        id: existing?.id, // Preserve ID if match found
+        sku: existing?.sku || '', 
+        price: existing?.price || this.newBasePrice(),
+        stock: existing?.stock || 0,
         attributeSummary: summaryParts.join(', '),
         attributeValues: attrValues
       };
@@ -201,7 +253,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   saveProduct() {
-    const prodId = crypto.randomUUID();
+    const isEdit = !!this.editingProductId();
+    const prodId = isEdit ? this.editingProductId()! : crypto.randomUUID();
     
     const finalAttributes = this.attributes()
       .filter(a => a.name && a.values)
@@ -210,7 +263,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
         values: a.values.split(',').map(v => v.trim())
       }));
 
-    const newProduct: Product = {
+    const productData: Product = {
       id: prodId,
       name: this.newName(),
       description: this.newDesc(),
@@ -220,8 +273,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
       image: this.newImageBase64() || `https://picsum.photos/200?random=${Date.now()}`
     };
 
-    const newVariants: Variant[] = this.previewVariants().map((pv, idx) => ({
-      id: crypto.randomUUID(),
+    const finalVariants: Variant[] = this.previewVariants().map((pv, idx) => ({
+      id: pv.id || crypto.randomUUID(), // Use existing ID if available (update) or new
       productId: prodId,
       sku: pv.sku || `${this.newName().substring(0,3).toUpperCase()}-${idx}`,
       barcode: Math.floor(100000 + Math.random() * 900000).toString(),
@@ -229,10 +282,15 @@ export class InventoryComponent implements OnInit, OnDestroy {
       stock: pv.stock,
       attributeSummary: pv.attributeSummary,
       attributeValues: pv.attributeValues,
-      image: newProduct.image // inherit parent for now
+      image: productData.image // inherit parent for now
     }));
 
-    this.db.addProduct(newProduct, newVariants);
+    if (isEdit) {
+      this.db.updateProduct(productData, finalVariants);
+    } else {
+      this.db.addProduct(productData, finalVariants);
+    }
+    
     this.closeModal();
   }
 

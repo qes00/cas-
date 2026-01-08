@@ -1,11 +1,12 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
-import { Product, Variant, CashShift, Sale, User } from './data.types';
+import { Product, Variant, CashShift, Sale, User, Expense } from './data.types';
 
 // DEFINICIÓN ESTRICTA DE USUARIOS (BACKEND SIMULADO)
+// Passwords added for security request
 const FIXED_USERS: User[] = [
-  { id: 'admin-01', name: 'Admin', role: 'ADMIN', createdAt: 1700000000000 },
-  { id: 'seller-01', name: 'Vendedor 1', role: 'SELLER', createdAt: 1700000000000 },
-  { id: 'seller-02', name: 'Vendedor 2', role: 'SELLER', createdAt: 1700000000000 }
+  { id: 'admin-01', name: 'Admin', role: 'ADMIN', createdAt: 1700000000000, password: 'admin123' },
+  { id: 'seller-01', name: 'Andrew', role: 'SELLER', createdAt: 1700000000000, password: '1234' },
+  { id: 'seller-02', name: 'Xiomara', role: 'SELLER', createdAt: 1700000000000, password: '1234' }
 ];
 
 @Injectable({
@@ -17,6 +18,7 @@ export class DbService {
   variants = signal<Variant[]>([]);
   shifts = signal<CashShift[]>([]);
   sales = signal<Sale[]>([]);
+  expenses = signal<Expense[]>([]); // New Signal for Expenses
   
   // Strict User Management - Always initialized with FIXED_USERS
   users = signal<User[]>(FIXED_USERS);
@@ -52,6 +54,7 @@ export class DbService {
         localStorage.setItem('rf_variants', JSON.stringify(this.variants()));
         localStorage.setItem('rf_shifts', JSON.stringify(this.shifts()));
         localStorage.setItem('rf_sales', JSON.stringify(this.sales()));
+        localStorage.setItem('rf_expenses', JSON.stringify(this.expenses())); // Persist Expenses
         // We do NOT save users anymore to enforce strict list on reload
       } catch (e) {
         console.error('Storage Quota Exceeded or Error', e);
@@ -76,6 +79,7 @@ export class DbService {
       this.variants.set(JSON.parse(localStorage.getItem('rf_variants') || '[]'));
       this.shifts.set(JSON.parse(localStorage.getItem('rf_shifts') || '[]'));
       this.sales.set(JSON.parse(localStorage.getItem('rf_sales') || '[]'));
+      this.expenses.set(JSON.parse(localStorage.getItem('rf_expenses') || '[]'));
       
       // NOTE: We intentionally IGNORE rf_users from storage to enforce the fixed list.
     } catch (e) {
@@ -123,19 +127,21 @@ export class DbService {
     }
   }
 
-  // --- Auth (STRICT MODE) ---
+  // --- Auth (STRICT MODE WITH PASSWORD) ---
 
-  login(nameOrId: string) {
-    const user = this.users().find(u => 
-      u.name.toLowerCase() === nameOrId.toLowerCase() || u.id === nameOrId
-    );
+  login(userId: string, passwordInput: string) {
+    const user = this.users().find(u => u.id === userId);
     
-    if (user) {
-      this.currentUser.set(user);
-      localStorage.setItem('rf_session_user_id', user.id); 
-    } else {
-      throw new Error('Usuario no válido.');
+    if (!user) {
+      throw new Error('Usuario no encontrado.');
     }
+
+    if (user.password !== passwordInput) {
+      throw new Error('Contraseña incorrecta.');
+    }
+    
+    this.currentUser.set(user);
+    localStorage.setItem('rf_session_user_id', user.id); 
   }
 
   logout() {
@@ -148,6 +154,18 @@ export class DbService {
   addProduct(product: Product, newVariants: Variant[]) {
     this.products.update(p => [product, ...p]);
     this.variants.update(v => [...newVariants, ...v]);
+  }
+
+  updateProduct(product: Product, variants: Variant[]) {
+    // 1. Update Product
+    this.products.update(list => list.map(p => p.id === product.id ? product : p));
+
+    // 2. Handle Variants (Simplification: Remove old for this product, add new/updated ones)
+    // In a real DB, we would upsert based on ID, but for this local storage model, replacement is safer to ensure consistency
+    this.variants.update(list => {
+      const otherVariants = list.filter(v => v.productId !== product.id);
+      return [...otherVariants, ...variants];
+    });
   }
 
   getVariantsForProduct(productId: string): Variant[] {
@@ -163,7 +181,7 @@ export class DbService {
     }));
   }
 
-  // --- Cash & Sales ---
+  // --- Cash & Sales & Expenses ---
 
   openShift(startCash: number) {
     if (this.activeShift()) throw new Error('Ya hay un turno abierto.');
@@ -207,6 +225,63 @@ export class DbService {
 
     // Update the specific shift in the list by ID
     this.shifts.update(list => list.map(s => s.id === current.id ? closedShift : s));
+  }
+
+  addExpense(amount: number, category: Expense['category'], description: string) {
+    const current = this.activeShift();
+    const user = this.currentUser();
+
+    if (!current) throw new Error('No hay turno abierto para registrar gastos.');
+    if (!user) throw new Error('Usuario no identificado.');
+    
+    if (amount <= 0) throw new Error('El monto debe ser mayor a 0.');
+    
+    // Safe guard: Prevent taking more money than what is currently expected in cash drawer
+    if (amount > current.endCashExpected) {
+      throw new Error(`Fondos insuficientes. Monto máximo: S/.${current.endCashExpected.toFixed(2)}`);
+    }
+
+    const expense: Expense = {
+      id: this.generateId(),
+      shiftId: current.id,
+      amount,
+      category,
+      description,
+      timestamp: Date.now(),
+      userId: user.id,
+      userName: user.name
+    };
+
+    // 1. Add to Expenses list
+    this.expenses.update(e => [expense, ...e]);
+
+    // 2. Update Shift Cash Expected (Subtract Expense)
+    const updatedShift: CashShift = {
+      ...current,
+      endCashExpected: current.endCashExpected - amount
+    };
+    
+    this.shifts.update(list => list.map(s => s.id === current.id ? updatedShift : s));
+  }
+
+  deleteExpense(expenseId: string) {
+    const current = this.activeShift();
+    if (!current) throw new Error('No hay turno abierto.');
+
+    const expense = this.expenses().find(e => e.id === expenseId);
+    if (!expense) throw new Error('Gasto no encontrado.');
+
+    if (expense.shiftId !== current.id) throw new Error('No se puede eliminar un gasto de un turno cerrado.');
+
+    // 1. Restore the amount to expected cash
+    const updatedShift: CashShift = {
+      ...current,
+      endCashExpected: current.endCashExpected + expense.amount
+    };
+    this.shifts.update(list => list.map(s => s.id === current.id ? updatedShift : s));
+
+    // 2. Remove expense
+    this.expenses.update(list => list.filter(e => e.id !== expenseId));
   }
 
   recordSale(sale: Sale) {

@@ -8,6 +8,7 @@ export interface User {
   name: string;
   role: 'ADMIN' | 'SELLER';
   createdAt: number;
+  password?: string; // Added for security
 }
 
 export interface Product {
@@ -54,6 +55,18 @@ export interface Sale {
   shiftId: string | null;
   userId: string;     // Added
   userName: string;   // Added snapshot of name
+}
+
+// New Entity for Petty Cash / Expenses
+export interface Expense {
+  id: string;
+  shiftId: string;
+  amount: number;
+  category: 'SUPPLIES' | 'FOOD' | 'SERVICES' | 'OTHER';
+  description: string;
+  timestamp: number;
+  userId: string;
+  userName: string;
 }
 
 export interface CashShift {
