@@ -116,6 +116,18 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.showAddModal.set(true);
   }
 
+  deleteProduct(product: Product) {
+    if (confirm(this.t('confirmDeleteProduct'))) {
+      this.db.deleteProduct(product.id);
+    }
+  }
+
+  deleteVariant(variantId: string) {
+    if (confirm(this.t('confirmDeleteVariant'))) {
+      this.db.deleteVariant(variantId);
+    }
+  }
+
   closeModal() {
     this.showAddModal.set(false);
     this.editingProductId.set(null);

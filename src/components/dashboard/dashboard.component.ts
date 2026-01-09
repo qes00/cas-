@@ -14,10 +14,20 @@ import { TranslationService } from '../../services/translation.service';
            <h2 class="text-3xl font-bold text-slate-800">{{ t('dashboardTitle') }}</h2>
            <p class="text-slate-500">{{ t('dashboardSubtitle') }}</p>
         </div>
-        <button (click)="generateWeeklyReport()" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-blue-700 transition flex items-center gap-2">
-           <span class="material-icons">assessment</span>
-           {{ t('downloadWeeklyReport') }}
-        </button>
+        <div class="flex flex-wrap gap-2">
+          <button (click)="generateReport(1, 'Diario')" class="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-bold hover:bg-slate-50 transition flex items-center gap-2 shadow-sm">
+             <span class="material-icons text-sm">today</span>
+             Reporte Diario
+          </button>
+          <button (click)="generateReport(7, 'Semanal')" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-blue-700 transition flex items-center gap-2">
+             <span class="material-icons text-sm">assessment</span>
+             Reporte Semanal
+          </button>
+          <button (click)="exportCsv()" class="bg-green-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-green-700 transition flex items-center gap-2">
+             <span class="material-icons text-sm">table_view</span>
+             Exportar CSV
+          </button>
+        </div>
       </header>
 
       <!-- Stats Grid -->
@@ -151,71 +161,80 @@ export class DashboardComponent {
     return this.db.products().find(p => p.id === pid)?.name || 'Unknown';
   }
   
-  generateWeeklyReport() {
+  // Advanced Reporting Engine (Spanish)
+  generateReport(days: number, title: string) {
     const now = new Date();
-    // 7 Days ago at 00:00:00
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 7);
-    sevenDaysAgo.setHours(0,0,0,0);
-    const fromTime = sevenDaysAgo.getTime();
+    const startDate = new Date(now);
+    startDate.setDate(now.getDate() - days);
+    startDate.setHours(0,0,0,0);
+    const fromTime = startDate.getTime();
     
     const reportSales = this.db.sales().filter(s => s.timestamp >= fromTime);
     const reportExpenses = this.db.expenses().filter(e => e.timestamp >= fromTime);
     
-    // Aggregates
+    // 1. Financial Aggregates
     const totalSales = reportSales.reduce((acc, s) => acc + s.total, 0);
+    const totalCashSales = reportSales.filter(s => s.paymentMethod === 'CASH').reduce((acc, s) => acc + s.total, 0);
+    const totalCardSales = reportSales.filter(s => s.paymentMethod === 'CARD').reduce((acc, s) => acc + s.total, 0);
+    
     const totalExpenses = reportExpenses.reduce((acc, e) => acc + e.amount, 0);
     const netProfit = totalSales - totalExpenses;
 
-    // Aggregate by Day (Sales)
+    // 2. Sales by Day
     const dailyMap = new Map<string, number>();
-    // Aggregate by Product
-    const productMap = new Map<string, {name: string, qty: number, total: number}>();
-    
     reportSales.forEach(s => {
        const dateKey = new Date(s.timestamp).toLocaleDateString();
        dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + s.total);
-       
+    });
+    const sortedDays = Array.from(dailyMap.entries()).sort((a,b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+
+    // 3. Top Products
+    const productMap = new Map<string, {name: string, qty: number, total: number}>();
+    reportSales.forEach(s => {
        s.items.forEach(i => {
-         if (!productMap.has(i.variantId)) {
-           productMap.set(i.variantId, { name: `${i.productName} (${i.attributeSummary})`, qty: 0, total: 0});
+         const key = i.variantId;
+         if (!productMap.has(key)) {
+           productMap.set(key, { name: `${i.productName} [${i.sku}]`, qty: 0, total: 0});
          }
-         const p = productMap.get(i.variantId)!;
+         const p = productMap.get(key)!;
          p.qty += i.quantity;
          p.total += (i.price * i.quantity);
        });
     });
-    
-    // Sort Maps
-    const sortedDays = Array.from(dailyMap.entries()).sort((a,b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
-    const sortedProducts = Array.from(productMap.values()).sort((a,b) => b.qty - a.qty); // Top selling first
+    // Top 5 by Quantity
+    const topProducts = Array.from(productMap.values())
+      .sort((a,b) => b.qty - a.qty)
+      .slice(0, 10);
 
+    // Build Output in SPANISH
     const lines = [
       "==============================================",
-      " SOPHIE POS - REPORTE SEMANAL (7 DIAS)",
+      ` SOPHIE POS - REPORTE ${title.toUpperCase()}`,
       "==============================================",
-      ` Fecha Generación: ${now.toLocaleString()}`,
-      ` Periodo: ${sevenDaysAgo.toLocaleDateString()} - ${now.toLocaleDateString()}`,
+      ` Generado:     ${now.toLocaleString()}`,
+      ` Periodo:      ${startDate.toLocaleDateString()} a ${now.toLocaleDateString()}`,
       "==============================================",
       " RESUMEN FINANCIERO",
       "----------------------------------------------",
-      ` (+) Total Ventas:    S/.${totalSales.toFixed(2)}`,
-      ` (-) Total Gastos:    S/.${totalExpenses.toFixed(2)}`,
+      ` (+) Ingresos Totales:   S/.${totalSales.toFixed(2)}`,
+      `     - Efectivo:         S/.${totalCashSales.toFixed(2)}`,
+      `     - Tarjeta:          S/.${totalCardSales.toFixed(2)}`,
+      ` (-) Gastos Totales:     S/.${totalExpenses.toFixed(2)}`,
       "----------------------------------------------",
-      ` (=) BALANCE NETO:    S/.${netProfit.toFixed(2)}`,
+      ` (=) BALANCE NETO:       S/.${netProfit.toFixed(2)}`,
       "==============================================",
-      " VENTAS POR DÍA",
+      " TENDENCIA DIARIA",
       "----------------------------------------------",
       " FECHA       | INGRESOS",
       "----------------------------------------------",
       ...sortedDays.map(d => ` ${d[0].padEnd(12)}| S/.${d[1].toFixed(2)}`),
       "----------------------------------------------",
       "==============================================",
-      " PRODUCTOS MÁS VENDIDOS (TOP)",
+      " PRODUCTOS MAS VENDIDOS (Top 10)",
       "----------------------------------------------",
-      " QTY  | TOTAL     | PRODUCTO",
+      " CANT  | TOTAL     | PRODUCTO",
       "----------------------------------------------",
-      ...sortedProducts.map(p => ` ${p.qty.toString().padEnd(5)}| S/.${p.total.toFixed(2).padEnd(7)}| ${p.name}`),
+      ...topProducts.map(p => ` ${p.qty.toString().padEnd(6)}| S/.${p.total.toFixed(2).padEnd(7)}| ${p.name}`),
       "==============================================",
       " DETALLE DE GASTOS",
       "----------------------------------------------",
@@ -224,11 +243,32 @@ export class DashboardComponent {
       "=============================================="
     ];
     
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    this.downloadFile(lines.join('\n'), `Reporte_${title}_${now.toISOString().slice(0,10)}.txt`, 'text/plain');
+  }
+
+  exportCsv() {
+    const sales = this.db.sales();
+    if (sales.length === 0) {
+      alert("No sales to export.");
+      return;
+    }
+
+    const header = "ID,Timestamp,Date,Time,Total,PaymentMethod,User,ItemsSummary\n";
+    const rows = sales.map(s => {
+      const d = new Date(s.timestamp);
+      const itemsStr = s.items.map(i => `${i.quantity}x ${i.productName}`).join('; ');
+      return `${s.id},${s.timestamp},${d.toLocaleDateString()},${d.toLocaleTimeString()},${s.total},${s.paymentMethod},${s.userName},"${itemsStr}"`;
+    }).join('\n');
+
+    this.downloadFile(header + rows, `Ventas_Export_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv');
+  }
+
+  private downloadFile(content: string, filename: string, type: string) {
+    const blob = new Blob([content], { type });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Reporte_Semanal_${now.toISOString().slice(0,10)}.txt`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

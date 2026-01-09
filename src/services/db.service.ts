@@ -168,6 +168,17 @@ export class DbService {
     });
   }
 
+  deleteProduct(productId: string) {
+    // Remove Product
+    this.products.update(list => list.filter(p => p.id !== productId));
+    // Remove all associated Variants
+    this.variants.update(list => list.filter(v => v.productId !== productId));
+  }
+
+  deleteVariant(variantId: string) {
+    this.variants.update(list => list.filter(v => v.id !== variantId));
+  }
+
   getVariantsForProduct(productId: string): Variant[] {
     return this.variants().filter(v => v.productId === productId);
   }

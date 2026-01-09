@@ -17,7 +17,7 @@
     <div class="flex-1 flex flex-col min-h-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       
       <!-- Top Bar: Search & Scan -->
-      <div class="p-4 border-b border-slate-100 flex gap-4 bg-white z-10">
+      <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 bg-white z-10">
         <div class="relative flex-1">
           <span class="material-icons absolute left-3 top-2.5 text-slate-400">search</span>
           <input 
@@ -27,10 +27,28 @@
             class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
           >
         </div>
-        <button (click)="toggleCamera()" class="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700">
-          <span class="material-icons">qr_code_scanner</span>
-          <span class="hidden md:inline">{{ t('scan') }}</span>
-        </button>
+        
+        <div class="flex gap-2">
+           <!-- Stock Toggle -->
+           <button 
+             (click)="toggleStockFilter()" 
+             class="flex items-center justify-center gap-2 px-3 rounded-lg border transition-all font-bold text-sm"
+             [class.bg-slate-100]="!showOutOfStock()"
+             [class.text-slate-500]="!showOutOfStock()"
+             [class.bg-orange-100]="showOutOfStock()"
+             [class.text-orange-700]="showOutOfStock()"
+             [class.border-orange-200]="showOutOfStock()"
+             title="Toggle Out of Stock Items"
+           >
+             <span class="material-icons">{{ showOutOfStock() ? 'visibility' : 'visibility_off' }}</span>
+             <span class="hidden md:inline">{{ showOutOfStock() ? 'Stock: All' : 'Stock: >0' }}</span>
+           </button>
+
+           <button (click)="toggleCamera()" class="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700">
+             <span class="material-icons">qr_code_scanner</span>
+             <span class="hidden md:inline">{{ t('scan') }}</span>
+           </button>
+        </div>
       </div>
 
       <!-- Scanner Overlay -->
@@ -55,12 +73,18 @@
           @for (variant of filteredVariants(); track variant.id) {
             <button 
               (click)="addToCart(variant)"
-              class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 hover:border-blue-500 hover:shadow-md transition text-left flex flex-col h-full group"
+              class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 hover:border-blue-500 hover:shadow-md transition text-left flex flex-col h-full group disabled:opacity-50 disabled:cursor-not-allowed"
+              [disabled]="variant.stock <= 0 && !showOutOfStock()"
             >
               <div class="aspect-square bg-slate-100 rounded-md mb-3 relative overflow-hidden">
                 <img [src]="variant.image || 'https://picsum.photos/200'" class="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="Product">
-                @if (variant.stock < 5) {
+                @if (variant.stock < 5 && variant.stock > 0) {
                    <span class="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">{{ t('lowStockItems') }}</span>
+                }
+                @if (variant.stock <= 0) {
+                   <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+                     <span class="bg-black text-white text-xs font-bold px-2 py-1 rounded">SIN STOCK</span>
+                   </div>
                 }
               </div>
               <div class="flex-1">
@@ -69,13 +93,18 @@
               </div>
               <div class="mt-auto flex justify-between items-center">
                 <span class="font-bold text-blue-600">S/.{{ variant.price }}</span>
-                <span class="text-xs text-slate-400 font-mono">{{ variant.stock }} left</span>
+                <span class="text-xs font-mono" [class.text-red-500]="variant.stock <= 0" [class.text-slate-400]="variant.stock > 0">
+                  {{ variant.stock }} {{ t('units') }}
+                </span>
               </div>
             </button>
           } @empty {
             <div class="col-span-full text-center py-12 text-slate-400">
               <span class="material-icons text-4xl mb-2">search_off</span>
               <p>{{ t('noProductsMatch') }}</p>
+              @if (!showOutOfStock()) {
+                <button (click)="toggleStockFilter()" class="mt-2 text-blue-600 text-sm hover:underline">Mostrar productos sin stock</button>
+              }
             </div>
           }
         </div>

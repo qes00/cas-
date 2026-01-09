@@ -1,3 +1,4 @@
+
 <div class="h-full flex flex-col">
   
   <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -54,10 +55,17 @@
                  </span>
               </td>
               <td class="px-6 py-4 text-right">
-                <button (click)="editProduct(product)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">{{ t('edit') }}</button>
+                <div class="flex justify-end gap-2">
+                  <button (click)="editProduct(product)" class="p-2 text-blue-600 hover:bg-blue-50 rounded" [title]="t('edit')">
+                    <span class="material-icons text-sm">edit</span>
+                  </button>
+                  <button (click)="deleteProduct(product)" class="p-2 text-red-500 hover:bg-red-50 rounded" [title]="t('delete')">
+                    <span class="material-icons text-sm">delete</span>
+                  </button>
+                </div>
               </td>
             </tr>
-            <!-- Expanded Variant View (simplified for demo) -->
+            <!-- Expanded Variant View -->
             @for (variant of db.getVariantsForProduct(product.id); track variant.id) {
                <tr class="bg-slate-50/50 text-xs text-slate-500">
                  <td class="pl-20 pr-6 py-2 flex items-center gap-2">
@@ -66,7 +74,12 @@
                  </td>
                  <td class="px-6 py-2 font-mono">{{ variant.sku }}</td>
                  <td class="px-6 py-2" [class.text-red-500]="variant.stock < 5" [class.font-bold]="variant.stock < 5">{{ variant.stock }}</td>
-                 <td class="px-6 py-2 text-right">S/.{{ variant.price }}</td>
+                 <td class="px-6 py-2 text-right flex items-center justify-end gap-2">
+                    <span>S/.{{ variant.price }}</span>
+                    <button (click)="deleteVariant(variant.id)" class="text-slate-300 hover:text-red-500 transition-colors" [title]="t('delete')">
+                      <span class="material-icons text-xs">delete_outline</span>
+                    </button>
+                 </td>
                </tr>
             }
           } @empty {
@@ -174,7 +187,7 @@
           <section>
             <h4 class="font-bold text-slate-700 mb-2">{{ t('variantsPreview') }} ({{ previewVariants().length }})</h4>
             <div class="border border-slate-200 rounded-lg overflow-hidden">
-              <table class="w-full text-left text-xs">
+              <table class="w-full text-left text-sm">
                 <thead class="bg-slate-100 text-slate-600">
                   <tr>
                     <th class="px-4 py-2">{{ t('variant') }}</th>
@@ -187,9 +200,18 @@
                   @for (v of previewVariants(); track $index) {
                     <tr>
                       <td class="px-4 py-2 font-medium">{{ v.attributeSummary }}</td>
-                      <td class="px-4 py-2"><input type="number" [(ngModel)]="v.price" class="w-20 border rounded px-1 bg-white text-slate-900"></td>
-                      <td class="px-4 py-2"><input type="number" [(ngModel)]="v.stock" class="w-20 border rounded px-1 bg-white text-slate-900"></td>
-                      <td class="px-4 py-2"><input type="text" [(ngModel)]="v.sku" class="w-32 border rounded px-1 bg-white text-slate-900" [placeholder]="t('auto')"></td>
+                      <td class="px-4 py-2">
+                        <!-- Larger Input -->
+                        <input type="number" [(ngModel)]="v.price" class="w-full md:w-24 border border-slate-300 rounded px-2 py-2 text-center font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                      </td>
+                      <td class="px-4 py-2">
+                        <!-- Larger Input -->
+                        <input type="number" [(ngModel)]="v.stock" class="w-full md:w-24 border border-slate-300 rounded px-2 py-2 text-center font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                      </td>
+                      <td class="px-4 py-2">
+                        <!-- Larger Input -->
+                        <input type="text" [(ngModel)]="v.sku" class="w-full md:w-40 border border-slate-300 rounded px-2 py-2 font-mono text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none" [placeholder]="t('auto')">
+                      </td>
                     </tr>
                   }
                 </tbody>

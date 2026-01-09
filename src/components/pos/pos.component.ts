@@ -22,10 +22,21 @@ export class PosComponent implements OnInit, OnDestroy {
   searchQuery = signal('');
   showScanner = signal(false);
   
+  // Stock Filter Toggle (Default: Hide out of stock)
+  showOutOfStock = signal(false);
+  
   // Computed
   filteredVariants = computed(() => {
     const q = this.searchQuery().toLowerCase();
+    const showAll = this.showOutOfStock();
+    
     return this.db.variants().filter(v => {
+      // 1. Stock Filter (Priority)
+      if (!showAll && v.stock <= 0) {
+        return false;
+      }
+
+      // 2. Search Filter
       const p = this.db.getProduct(v.productId);
       const searchStr = `${p?.name} ${v.sku} ${v.attributeSummary}`.toLowerCase();
       return searchStr.includes(q);
@@ -50,6 +61,10 @@ export class PosComponent implements OnInit, OnDestroy {
   handleScan(code: string) {
     const variant = this.db.findVariantByCode(code);
     if (variant) {
+      if (variant.stock <= 0 && !this.showOutOfStock()) {
+        alert('Product out of stock!');
+        return;
+      }
       this.addToCart(variant);
       // Play beep sound
       this.playBeep();
@@ -65,6 +80,10 @@ export class PosComponent implements OnInit, OnDestroy {
     osc.frequency.value = 800;
     osc.start();
     setTimeout(() => osc.stop(), 100);
+  }
+
+  toggleStockFilter() {
+    this.showOutOfStock.update(v => !v);
   }
 
   addToCart(variant: Variant) {
