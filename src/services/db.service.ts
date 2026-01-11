@@ -3,6 +3,7 @@ import { Product, Variant, CashShift, Sale, User, Expense } from './data.types';
 
 // FIREBASE IMPORTS
 import { initializeApp } from 'firebase/app';
+import { getAnalytics } from 'firebase/analytics';
 import { 
   getFirestore, 
   collection, 
@@ -16,19 +17,16 @@ import {
 } from 'firebase/firestore';
 
 // =================================================================================
-// CONFIGURACIÓN SIMPLIFICADA DE FIREBASE
-// ---------------------------------------------------------------------------------
-// 1. Ve a https://console.firebase.google.com/
-// 2. Crea un proyecto (Gratis/Spark Plan).
-// 3. Agrega una app Web (</>) y copia las credenciales aquí.
+// CONFIGURACIÓN DE FIREBASE (INTEGRADA)
 // =================================================================================
 const FIREBASE_CONFIG = {
-  apiKey: "", // <--- PEGA TU API KEY AQUÍ
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyDw2La62rRyX2ougtGswJzIm-Ycpyj2A5s",
+  authDomain: "sophie-pos.firebaseapp.com",
+  projectId: "sophie-pos",
+  storageBucket: "sophie-pos.firebasestorage.app",
+  messagingSenderId: "293877683540",
+  appId: "1:293877683540:web:1a0fe03cde6979070fe4c1",
+  measurementId: "G-18PTED3K56"
 };
 
 const FIXED_USERS: User[] = [
@@ -83,6 +81,15 @@ export class DbService {
       try {
         const app = initializeApp(FIREBASE_CONFIG);
         this.db = getFirestore(app);
+        
+        // Inicializar Analytics (Opcional, pero incluido en tu snippet)
+        try {
+          const analytics = getAnalytics(app);
+          console.log('📊 Analytics inicializado');
+        } catch (e) {
+          console.warn('Analytics no soportado en este entorno', e);
+        }
+
         this.isCloudConnected.set(true);
         console.log('🔥 NUBE CONECTADA: Sincronizando datos...');
         
