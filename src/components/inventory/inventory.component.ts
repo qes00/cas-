@@ -24,6 +24,9 @@ export class InventoryComponent implements OnInit, OnDestroy {
   isGenerating = signal(false);
   searchQuery = signal('');
 
+  // UI State for Collapsible Rows
+  expandedProductIds = signal<Set<string>>(new Set());
+
   // Editing State
   editingProductId = signal<string | null>(null);
 
@@ -66,6 +69,23 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.scanSub) this.scanSub.unsubscribe();
+  }
+
+  // --- Collapsible Logic ---
+  toggleExpand(productId: string) {
+    this.expandedProductIds.update(currentSet => {
+      const newSet = new Set(currentSet);
+      if (newSet.has(productId)) {
+        newSet.delete(productId);
+      } else {
+        newSet.add(productId);
+      }
+      return newSet;
+    });
+  }
+
+  isExpanded(productId: string): boolean {
+    return this.expandedProductIds().has(productId);
   }
 
   openModal() {

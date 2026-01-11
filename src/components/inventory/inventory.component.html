@@ -28,6 +28,7 @@
       <table class="w-full text-left">
         <thead class="bg-slate-50 text-slate-500 font-medium uppercase text-xs sticky top-0 z-10 shadow-sm">
           <tr>
+            <th class="px-6 py-3 w-10"></th> <!-- Chevron Column -->
             <th class="px-6 py-3">{{ t('product') }}</th>
             <th class="px-6 py-3">{{ t('variants') }}</th>
             <th class="px-6 py-3">{{ t('totalStock') }}</th>
@@ -36,7 +37,14 @@
         </thead>
         <tbody class="divide-y divide-slate-100">
           @for (product of filteredProducts(); track product.id) {
-            <tr class="hover:bg-slate-50 group">
+            <!-- Main Product Row -->
+            <tr class="hover:bg-slate-50 group cursor-pointer transition-colors" (click)="toggleExpand(product.id)">
+              <td class="pl-6 py-4">
+                 <span class="material-icons text-slate-400 transition-transform duration-200" 
+                       [class.rotate-90]="isExpanded(product.id)">
+                   chevron_right
+                 </span>
+              </td>
               <td class="px-6 py-4">
                 <div class="flex items-center">
                   <img [src]="product.image || ''" width="40" height="40" class="rounded mr-3 bg-slate-200 object-cover">
@@ -55,7 +63,7 @@
                  </span>
               </td>
               <td class="px-6 py-4 text-right">
-                <div class="flex justify-end gap-2">
+                <div class="flex justify-end gap-2" (click)="$event.stopPropagation()">
                   <button (click)="editProduct(product)" class="p-2 text-blue-600 hover:bg-blue-50 rounded" [title]="t('edit')">
                     <span class="material-icons text-sm">edit</span>
                   </button>
@@ -65,26 +73,46 @@
                 </div>
               </td>
             </tr>
+            
             <!-- Expanded Variant View -->
-            @for (variant of db.getVariantsForProduct(product.id); track variant.id) {
-               <tr class="bg-slate-50/50 text-xs text-slate-500">
-                 <td class="pl-20 pr-6 py-2 flex items-center gap-2">
-                    <span class="material-icons text-sm text-slate-300">subdirectory_arrow_right</span>
-                    {{ variant.attributeSummary }}
-                 </td>
-                 <td class="px-6 py-2 font-mono">{{ variant.sku }}</td>
-                 <td class="px-6 py-2" [class.text-red-500]="variant.stock < 5" [class.font-bold]="variant.stock < 5">{{ variant.stock }}</td>
-                 <td class="px-6 py-2 text-right flex items-center justify-end gap-2">
-                    <span>S/.{{ variant.price }}</span>
-                    <button (click)="deleteVariant(variant.id)" class="text-slate-300 hover:text-red-500 transition-colors" [title]="t('delete')">
-                      <span class="material-icons text-xs">delete_outline</span>
-                    </button>
-                 </td>
-               </tr>
+            @if (isExpanded(product.id)) {
+              @for (variant of db.getVariantsForProduct(product.id); track variant.id) {
+                 <tr class="bg-slate-50/70 border-b border-slate-100 animate-in fade-in slide-in-from-top-1">
+                   <td></td> <!-- Indent -->
+                   <td colspan="4" class="py-2 pr-6">
+                     <div class="flex items-center text-xs text-slate-600">
+                       <div class="w-8 flex justify-center mr-4">
+                         <span class="material-icons text-slate-300 text-sm">subdirectory_arrow_right</span>
+                       </div>
+                       
+                       <div class="flex-1 grid grid-cols-4 items-center gap-4">
+                         <div class="col-span-1 font-medium text-slate-800">{{ variant.attributeSummary }}</div>
+                         <div class="col-span-1 font-mono text-slate-500">{{ variant.sku }}</div>
+                         <div class="col-span-1" [class.text-red-600]="variant.stock < 5" [class.font-bold]="variant.stock < 5">
+                            {{ variant.stock }} units
+                         </div>
+                         <div class="col-span-1 text-right flex items-center justify-end gap-3">
+                            <span class="font-semibold">S/.{{ variant.price }}</span>
+                            <button (click)="deleteVariant(variant.id)" class="text-slate-300 hover:text-red-500 transition-colors p-1 rounded hover:bg-white" [title]="t('delete')">
+                              <span class="material-icons text-sm">delete_outline</span>
+                            </button>
+                         </div>
+                       </div>
+                     </div>
+                   </td>
+                 </tr>
+              }
+              @if (db.getVariantsForProduct(product.id).length === 0) {
+                 <tr class="bg-slate-50/70">
+                   <td></td>
+                   <td colspan="4" class="py-3 text-center text-xs text-slate-400 italic">No variants available</td>
+                 </tr>
+              }
             }
+
           } @empty {
              <tr>
-               <td colspan="4" class="px-6 py-12 text-center text-slate-400">
+               <td colspan="5" class="px-6 py-12 text-center text-slate-400">
                  <span class="material-icons text-4xl mb-2">inventory_2</span>
                  <p>{{ t('noProductsFound') }}</p>
                </td>

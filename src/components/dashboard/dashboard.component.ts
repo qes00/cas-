@@ -11,7 +11,19 @@ import { TranslationService } from '../../services/translation.service';
     <div class="space-y-6">
       <header class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <h2 class="text-3xl font-bold text-slate-800">{{ t('dashboardTitle') }}</h2>
+           <div class="flex items-center gap-3">
+             <h2 class="text-3xl font-bold text-slate-800">{{ t('dashboardTitle') }}</h2>
+             <!-- Cloud Status Badge -->
+             @if (db.isCloudConnected()) {
+               <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border border-blue-200" title="Connected to Google Cloud">
+                 <span class="material-icons text-sm">cloud_done</span> {{ t('cloudConnected') }}
+               </span>
+             } @else {
+               <span class="bg-slate-200 text-slate-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border border-slate-300" title="Data saved to device only">
+                 <span class="material-icons text-sm">cloud_off</span> {{ t('localMode') }}
+               </span>
+             }
+           </div>
            <p class="text-slate-500">{{ t('dashboardSubtitle') }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -89,41 +101,74 @@ import { TranslationService } from '../../services/translation.service';
         </div>
       </div>
 
-      <!-- Low Stock Alert List -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-          <h3 class="font-bold text-slate-700">{{ t('stockAlerts') }}</h3>
-          <span class="text-xs font-semibold bg-orange-100 text-orange-800 px-2 py-1 rounded-full">{{ t('below5Units') }}</span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-slate-500 font-medium uppercase text-xs">
-              <tr>
-                <th class="px-6 py-3">{{ t('product') }}</th>
-                <th class="px-6 py-3">{{ t('variant') }}</th>
-                <th class="px-6 py-3">{{ t('sku') }}</th>
-                <th class="px-6 py-3 text-right">{{ t('remaining') }}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              @for (item of lowStockItems(); track item.id) {
-                <tr class="hover:bg-slate-50">
-                  <td class="px-6 py-3 font-medium text-slate-900">
-                    {{ getProductName(item.productId) }}
-                  </td>
-                  <td class="px-6 py-3">{{ item.attributeSummary }}</td>
-                  <td class="px-6 py-3 font-mono text-xs">{{ item.sku }}</td>
-                  <td class="px-6 py-3 text-right text-red-600 font-bold">{{ item.stock }}</td>
-                </tr>
-              } @empty {
+      <!-- Main Content Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Low Stock Alert List (Takes up 2 cols) -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+            <h3 class="font-bold text-slate-700">{{ t('stockAlerts') }}</h3>
+            <span class="text-xs font-semibold bg-orange-100 text-orange-800 px-2 py-1 rounded-full">{{ t('below5Units') }}</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-50 text-slate-500 font-medium uppercase text-xs">
                 <tr>
-                  <td colspan="4" class="px-6 py-8 text-center text-slate-400">{{ t('stockHealthy') }}</td>
+                  <th class="px-6 py-3">{{ t('product') }}</th>
+                  <th class="px-6 py-3">{{ t('variant') }}</th>
+                  <th class="px-6 py-3">{{ t('sku') }}</th>
+                  <th class="px-6 py-3 text-right">{{ t('remaining') }}</th>
                 </tr>
-              }
-            </tbody>
-          </table>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (item of lowStockItems(); track item.id) {
+                  <tr class="hover:bg-slate-50">
+                    <td class="px-6 py-3 font-medium text-slate-900">
+                      {{ getProductName(item.productId) }}
+                    </td>
+                    <td class="px-6 py-3">{{ item.attributeSummary }}</td>
+                    <td class="px-6 py-3 font-mono text-xs">{{ item.sku }}</td>
+                    <td class="px-6 py-3 text-right text-red-600 font-bold">{{ item.stock }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="px-6 py-8 text-center text-slate-400">{{ t('stockHealthy') }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Data Management Card (Synchronization) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div class="px-6 py-4 border-b border-slate-100 bg-slate-50">
+            <h3 class="font-bold text-slate-700 flex items-center gap-2">
+              <span class="material-icons text-slate-400">cloud_sync</span>
+              {{ t('dataManagement') }}
+            </h3>
+          </div>
+          <div class="p-6 flex-1 flex flex-col justify-center gap-4">
+             <p class="text-sm text-slate-500 mb-2">
+               {{ t('backupDesc') }}
+             </p>
+             
+             <button (click)="performBackup()" class="w-full bg-slate-800 text-white py-3 rounded-lg font-bold hover:bg-slate-900 flex items-center justify-center gap-2">
+               <span class="material-icons">download</span>
+               {{ t('downloadBackup') }}
+             </button>
+
+             <div class="relative">
+               <input #fileInput type="file" (change)="performRestore($event)" accept=".json" class="hidden">
+               <button (click)="fileInput.click()" class="w-full border-2 border-dashed border-slate-300 text-slate-600 py-3 rounded-lg font-bold hover:bg-slate-50 hover:border-slate-400 flex items-center justify-center gap-2">
+                 <span class="material-icons">upload</span>
+                 {{ t('restoreBackup') }}
+               </button>
+             </div>
+          </div>
         </div>
       </div>
+
     </div>
   `
 })
@@ -161,6 +206,36 @@ export class DashboardComponent {
     return this.db.products().find(p => p.id === pid)?.name || 'Unknown';
   }
   
+  // --- Backup & Restore ---
+  performBackup() {
+    const json = this.db.exportDatabase();
+    const filename = `SophiePOS_Backup_${new Date().toISOString().slice(0,10)}.json`;
+    this.downloadFile(json, filename, 'application/json');
+  }
+
+  async performRestore(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const text = await file.text();
+    
+    if(confirm(this.t('confirmRestore'))) {
+       const success = await this.db.importDatabase(text);
+       if (success) {
+         alert('Database restored successfully!');
+         // If we are in local mode, reload to clear any stale state. 
+         // If cloud, the listeners will handle it, but a reload is safer.
+         window.location.reload(); 
+       } else {
+         alert('Failed to restore database. Invalid file format.');
+       }
+    }
+    
+    // Reset input
+    input.value = '';
+  }
+
   // Advanced Reporting Engine (Spanish)
   generateReport(days: number, title: string) {
     const now = new Date();
