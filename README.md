@@ -22,8 +22,8 @@ Login → Dashboard → Ventas → Productos → Reportes
 ```
 
 ## 🔗 Enlaces
-- **Repositorio:** `https://github.com/tuusuario/angular-pos`
-- **Demo:** `https://tuusuario.github.io/angular-pos`
+- **Repositorio:** `https://github.com/qes00/cas_`
+- **Demo:** `https://qes00.github.io/cas_`
 
 ## 📄 Licencia
 MIT © 2023
