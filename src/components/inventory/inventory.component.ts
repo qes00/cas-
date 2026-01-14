@@ -36,10 +36,11 @@ export class InventoryComponent implements OnInit, OnDestroy {
   newBasePrice = signal(0);
   newDesc = signal('');
   newImageBase64 = signal<string | null>(null);
+  newImageUrl = signal('');
   isImageProcessing = signal(false);
-  
+
   // Matrix Builders
-  attributes = signal<{name: string, values: string}[]>([{name: 'Size', values: 'S, M, L'}, {name: 'Color', values: 'Red, Blue'}]);
+  attributes = signal<{ name: string, values: string }[]>([{ name: 'Size', values: 'S, M, L' }, { name: 'Color', values: 'Red, Blue' }]);
 
   // Preview of generated variants
   previewVariants = signal<any[]>([]);
@@ -96,9 +97,11 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.newBasePrice.set(0);
     this.newCategory.set('General');
     this.newImageBase64.set(null);
-    this.attributes.set([{name: 'Size', values: 'S, M, L'}, {name: 'Color', values: 'Red, Blue'}]);
-    
+    this.attributes.set([{ name: 'Size', values: 'S, M, L' }, { name: 'Color', values: 'Red, Blue' }]);
+
     this.showAddModal.set(true);
+    this.showAddModal.set(true);
+    this.newImageUrl.set('');
     this.generatePreview();
   }
 
@@ -108,7 +111,17 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.newDesc.set(product.description);
     this.newBasePrice.set(product.basePrice);
     this.newCategory.set(product.category);
-    this.newImageBase64.set(product.image || null);
+    this.newCategory.set(product.category);
+
+    // Check if image is URL or Base64 (simple heuristic: starts with http)
+    const img = product.image || null;
+    if (img && img.startsWith('http')) {
+      this.newImageUrl.set(img);
+      this.newImageBase64.set(null);
+    } else {
+      this.newImageBase64.set(img);
+      this.newImageUrl.set('');
+    }
 
     // Reconstruct Attributes for the Form (convert arrays back to CSV string)
     if (product.attributes && product.attributes.length > 0) {
@@ -131,7 +144,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
       attributeSummary: v.attributeSummary,
       attributeValues: v.attributeValues
     }));
-    
+
     this.previewVariants.set(mappedVariants);
     this.showAddModal.set(true);
   }
@@ -159,7 +172,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
   }
 
   addAttribute() {
-    this.attributes.update(a => [...a, {name: '', values: ''}]);
+    this.attributes.update(a => [...a, { name: '', values: '' }]);
   }
 
   removeAttribute(index: number) {
@@ -204,10 +217,10 @@ export class InventoryComponent implements OnInit, OnDestroy {
           const scaleSize = Math.min(1, MAX_WIDTH / img.width);
           canvas.width = img.width * scaleSize;
           canvas.height = img.height * scaleSize;
-  
+
           const ctx = canvas.getContext('2d');
           if (!ctx) return reject('Could not get canvas context');
-          
+
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           const webpDataUrl = canvas.toDataURL('image/webp', 0.8);
           resolve(webpDataUrl);
@@ -221,7 +234,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
   generatePreview() {
     // If editing and we haven't touched attributes, we might want to keep existing variants
     // But for simplicity, we regenerate if attributes change.
-    
+
     // Cartesian Product Logic
     const attrs = this.attributes().filter(a => a.name && a.values);
     if (attrs.length === 0) {
@@ -230,7 +243,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
     }
 
     const valueArrays = attrs.map(a => a.values.split(',').map(v => v.trim()).filter(v => v));
-    
+
     // Helper to generate combinations
     const cartesian = (args: string[][]): string[][] => {
       const r: string[][] = [];
@@ -248,24 +261,24 @@ export class InventoryComponent implements OnInit, OnDestroy {
     };
 
     const combinations = cartesian(valueArrays);
-    
+
     const variants = combinations.map((combo, idx) => {
       const summaryParts: string[] = [];
       const attrValues: Record<string, string> = {};
-      
+
       attrs.forEach((attr, idx) => {
         summaryParts.push(`${attr.name}: ${combo[idx]}`);
         attrValues[attr.name] = combo[idx];
       });
 
       // Try to preserve existing values if editing (Basic matching by summary)
-      const existing = this.editingProductId() 
-         ? this.db.getVariantsForProduct(this.editingProductId()!).find(v => v.attributeSummary === summaryParts.join(', '))
-         : null;
+      const existing = this.editingProductId()
+        ? this.db.getVariantsForProduct(this.editingProductId()!).find(v => v.attributeSummary === summaryParts.join(', '))
+        : null;
 
       return {
         id: existing?.id, // Preserve ID if match found
-        sku: existing?.sku || '', 
+        sku: existing?.sku || '',
         price: existing?.price || this.newBasePrice(),
         stock: existing?.stock || 0,
         attributeSummary: summaryParts.join(', '),
@@ -284,10 +297,49 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.isGenerating.set(false);
   }
 
+  processImageUrl() {
+    const url = this.newImageUrl().trim();
+    if (!url) return;
+
+    // Google Drive Link Converter
+    let finalUrl = url;
+    let fileId = '';
+
+    const patterns = [
+      /\/file\/d\/([^\/]+)/,
+      /id=([^&]+)/
+    ];
+
+    if (url.includes('drive.google.com')) {
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+          fileId = match[1];
+          break;
+        }
+      }
+
+      if (fileId) {
+        finalUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+        this.newImageUrl.set(finalUrl);
+      }
+    }
+
+    // Clear base64 if URL is set
+    this.newImageBase64.set(null);
+  }
+
+  get previewImageSrc(): string | null {
+    return this.newImageBase64() || this.newImageUrl() || null;
+  }
+
   saveProduct() {
     const isEdit = !!this.editingProductId();
     const prodId = isEdit ? this.editingProductId()! : crypto.randomUUID();
-    
+
+    // Prioritize Base64 (uploaded) if present, else URL, else Random
+    const finalImage = this.newImageBase64() || this.newImageUrl() || `https://picsum.photos/200?random=${Date.now()}`;
+
     const finalAttributes = this.attributes()
       .filter(a => a.name && a.values)
       .map(a => ({
@@ -302,13 +354,13 @@ export class InventoryComponent implements OnInit, OnDestroy {
       category: this.newCategory(),
       basePrice: this.newBasePrice(),
       attributes: finalAttributes,
-      image: this.newImageBase64() || `https://picsum.photos/200?random=${Date.now()}`
+      image: finalImage
     };
 
     const finalVariants: Variant[] = this.previewVariants().map((pv, idx) => ({
       id: pv.id || crypto.randomUUID(), // Use existing ID if available (update) or new
       productId: prodId,
-      sku: pv.sku || `${this.newName().substring(0,3).toUpperCase()}-${idx}`,
+      sku: pv.sku || `${this.newName().substring(0, 3).toUpperCase()}-${idx}`,
       barcode: Math.floor(100000 + Math.random() * 900000).toString(),
       price: pv.price,
       stock: pv.stock,
@@ -322,7 +374,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
     } else {
       this.db.addProduct(productData, finalVariants);
     }
-    
+
     this.closeModal();
   }
 

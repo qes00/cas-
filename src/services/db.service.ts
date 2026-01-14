@@ -3,12 +3,12 @@ import { Product, Variant, CashShift, Sale, User, Expense } from './data.types';
 
 // FIREBASE IMPORTS
 import { initializeApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  collection, 
-  onSnapshot, 
-  setDoc, 
-  doc, 
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  setDoc,
+  doc,
   deleteDoc,
   query,
   writeBatch,
@@ -22,13 +22,15 @@ import {
 // 2. Crea un proyecto (Gratis/Spark Plan).
 // 3. Agrega una app Web (</>) y copia las credenciales aquí.
 // =================================================================================
-const FIREBASE_CONFIG = {
-  apiKey: "", // <--- PEGA TU API KEY AQUÍ
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDw2La62rRyX2ougtGswJzIm-Ycpyj2A5s",
+  authDomain: "sophie-pos.firebaseapp.com",
+  projectId: "sophie-pos",
+  storageBucket: "sophie-pos.firebasestorage.app",
+  messagingSenderId: "293877683540",
+  appId: "1:293877683540:web:71a6dcf73e0468970fe4c1",
+  measurementId: "G-2PWT7KPRZV"
 };
 
 const FIXED_USERS: User[] = [
@@ -46,8 +48,8 @@ export class DbService {
   variants = signal<Variant[]>([]);
   shifts = signal<CashShift[]>([]);
   sales = signal<Sale[]>([]);
-  expenses = signal<Expense[]>([]); 
-  
+  expenses = signal<Expense[]>([]);
+
   users = signal<User[]>(FIXED_USERS);
   currentUser = signal<User | null>(null);
 
@@ -65,7 +67,7 @@ export class DbService {
   constructor() {
     this.initDatabase();
     this.restoreSession();
-    
+
     // Auto-save local backup regardless of cloud status
     effect(() => {
       try {
@@ -79,13 +81,13 @@ export class DbService {
   }
 
   private initDatabase() {
-    if (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.length > 5) {
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey.length > 5) {
       try {
-        const app = initializeApp(FIREBASE_CONFIG);
+        const app = initializeApp(firebaseConfig);
         this.db = getFirestore(app);
         this.isCloudConnected.set(true);
         console.log('🔥 NUBE CONECTADA: Sincronizando datos...');
-        
+
         // Listeners en Tiempo Real (Muy bajo consumo para < 100 items)
         this.listenToCollection('products', this.products);
         this.listenToCollection('variants', this.variants);
@@ -111,7 +113,7 @@ export class DbService {
       this.shifts.set(JSON.parse(localStorage.getItem('rf_shifts') || '[]'));
       this.sales.set(JSON.parse(localStorage.getItem('rf_sales') || '[]'));
       this.expenses.set(JSON.parse(localStorage.getItem('rf_expenses') || '[]'));
-      
+
       if (this.products().length === 0) this.seedProducts();
       this.sanitizeShifts();
     } catch (e) {
@@ -126,7 +128,7 @@ export class DbService {
       const data: any[] = [];
       snapshot.forEach((doc) => data.push(doc.data()));
       signalToUpdate.set(data); // Actualiza la UI automáticamente
-      if(collectionName === 'shifts') this.sanitizeShifts();
+      if (collectionName === 'shifts') this.sanitizeShifts();
     });
   }
 
@@ -158,7 +160,7 @@ export class DbService {
   addProduct(product: Product, newVariants: Variant[]) {
     this.products.update(p => [product, ...p]);
     this.variants.update(v => [...newVariants, ...v]);
-    
+
     this.saveData('products', product);
     newVariants.forEach(v => this.saveData('variants', v));
   }
@@ -182,7 +184,7 @@ export class DbService {
     const varsToDelete = this.variants().filter(v => v.productId === productId);
     this.products.update(list => list.filter(p => p.id !== productId));
     this.variants.update(list => list.filter(v => v.productId !== productId));
-    
+
     this.removeData('products', productId);
     varsToDelete.forEach(v => this.removeData('variants', v.id));
   }
@@ -218,7 +220,7 @@ export class DbService {
       userId: user.id,
       userName: user.name
     };
-    
+
     this.shifts.update(s => [newShift, ...s]);
     this.saveData('shifts', newShift);
   }
@@ -258,7 +260,7 @@ export class DbService {
     };
 
     const updatedShift = { ...current, endCashExpected: current.endCashExpected - amount };
-    
+
     this.expenses.update(e => [expense, ...e]);
     this.shifts.update(list => list.map(s => s.id === current.id ? updatedShift : s));
 
@@ -289,7 +291,7 @@ export class DbService {
 
     this.sales.update(s => [sale, ...s]);
     this.saveData('sales', sale);
-    
+
     sale.items.forEach(item => this.updateStock(item.variantId, -item.quantity));
 
     const shift = this.activeShift();
@@ -320,7 +322,7 @@ export class DbService {
   }
 
   // --- IMPORTACIÓN / EXPORTACIÓN (Backup y Sincronización) ---
-  
+
   exportDatabase(): string {
     const data = {
       version: '1.3',
@@ -369,8 +371,8 @@ export class DbService {
         data.expenses.forEach((x: any) => addToBatch('expenses', x));
 
         if (count > 0) {
-           await batch.commit();
-           console.log(`✅ ${count} registros restaurados en la nube.`);
+          await batch.commit();
+          console.log(`✅ ${count} registros restaurados en la nube.`);
         }
       }
 
@@ -387,9 +389,9 @@ export class DbService {
     if (open.length > 1) {
       // Auto-cierre de seguridad si hay múltiples turnos abiertos
       open.slice(1).forEach(s => {
-         const closed = { ...s, status: 'CLOSED' as const, closedAt: Date.now(), endCashActual: s.startCash };
-         this.shifts.update(l => l.map(x => x.id === s.id ? closed : x));
-         this.saveData('shifts', closed);
+        const closed = { ...s, status: 'CLOSED' as const, closedAt: Date.now(), endCashActual: s.startCash };
+        this.shifts.update(l => l.map(x => x.id === s.id ? closed : x));
+        this.saveData('shifts', closed);
       });
     }
   }

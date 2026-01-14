@@ -143,11 +143,23 @@
         <!-- Basic Info -->
         <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="md:col-span-1">
-            <label class="block text-sm font-bold text-slate-700 mb-2">Product Image</label>
+            <label class="block text-sm font-bold text-slate-700 mb-2">Product Image (Upload or URL)</label>
+            
+            <div class="mb-2">
+               <input 
+                 type="text" 
+                 [(ngModel)]="newImageUrl" 
+                 (change)="processImageUrl()"
+                 placeholder="Paste image URL (e.g. Google Drive link)"
+                 class="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-900"
+               >
+            </div>
+
             <div class="aspect-square bg-slate-100 rounded-lg flex items-center justify-center relative border-2 border-dashed border-slate-300 overflow-hidden">
-              @if (newImageBase64()) {
-                <img [src]="newImageBase64()" alt="Product Preview" class="object-cover w-full h-full">
-                <button (click)="newImageBase64.set(null)" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md transition-transform duration-200 hover:scale-110">
+
+              @if (previewImageSrc) {
+                <img [src]="previewImageSrc" alt="Product Preview" class="object-cover w-full h-full">
+                <button (click)="newImageBase64.set(null); newImageUrl.set('')" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md transition-transform duration-200 hover:scale-110">
                   <span class="material-icons text-base">delete</span>
                 </button>
               } @else {
@@ -156,12 +168,12 @@
                     <div class="animate-pulse">Processing...</div>
                   } @else {
                     <span class="material-icons text-4xl">add_a_photo</span>
-                    <p class="text-xs mt-1">Click to upload</p>
+                    <p class="text-xs mt-1">Click to upload or paste URL above</p>
                   }
                 </div>
               }
               <input #fileInput type="file" class="hidden" (change)="onFileSelected($event)" accept="image/*">
-              @if (!isImageProcessing()) {
+              @if (!isImageProcessing() && !previewImageSrc) {
                 <button (click)="fileInput.click()" class="absolute inset-0 w-full h-full cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"></button>
               }
             </div>
