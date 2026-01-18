@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, HostListener } from '@angular/core';
+import { Component, signal, inject, HostListener, OnInit, ApplicationRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InventoryComponent } from './components/inventory/inventory.component';
@@ -8,7 +8,8 @@ import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { ScannerService } from './services/scanner.service';
 import { TranslationService } from './services/translation.service';
 import { DbService } from './services/db.service';
-import { User } from './services/data.types';
+import { AuthService } from './services/auth.service';
+import { ThemeService } from './services/theme.service';
 
 type ViewState = 'dashboard' | 'pos' | 'inventory' | 'cash';
 
@@ -22,23 +23,26 @@ export class AppComponent {
   scannerService = inject(ScannerService);
   translationService = inject(TranslationService);
   db = inject(DbService);
-  
+  auth = inject(AuthService);
+  theme = inject(ThemeService);
+
   currentView = signal<ViewState>('dashboard');
   isSidebarOpen = signal(true);
-  
-  // Login State
-  selectedUserForLogin = signal<User | null>(null);
+
+  // Login State - Now uses email/password
+  emailInput = signal('');
   passwordInput = signal('');
-  loginError = signal('');
-  
+  isRegistering = signal(false);
+  registerName = signal('');
+
   // Global Keydown for Barcode Scanner Hardware Emulation
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
     // Only handle scanner if logged in
-    if (this.db.currentUser()) {
-       this.scannerService.handleKeyInput(event);
-    } else if (this.selectedUserForLogin() && event.key === 'Enter') {
-      // Allow Enter key to submit password
+    if (this.auth.currentUser()) {
+      this.scannerService.handleKeyInput(event);
+    } else if (event.key === 'Enter' && !this.isRegistering()) {
+      // Allow Enter key to submit login
       this.confirmLogin();
     }
   }
@@ -54,41 +58,56 @@ export class AppComponent {
       this.isSidebarOpen.set(false);
     }
   }
-  
+
   // --- Auth Flow ---
 
-  initiateLogin(user: User) {
-    this.selectedUserForLogin.set(user);
-    this.passwordInput.set('');
-    this.loginError.set('');
-  }
-
-  confirmLogin() {
-    const user = this.selectedUserForLogin();
+  async confirmLogin() {
+    const email = this.emailInput();
     const pass = this.passwordInput();
 
-    if (!user) return;
+    if (!email || !pass) {
+      return;
+    }
 
     try {
-      this.db.login(user.id, pass);
+      await this.auth.login(email, pass);
       // Success: reset state
-      this.selectedUserForLogin.set(null);
+      this.emailInput.set('');
       this.passwordInput.set('');
-      this.loginError.set('');
     } catch (e: any) {
-      this.loginError.set(e.message || this.t('invalidPassword'));
-      // Shake animation trigger logic could go here
+      // Error is handled by auth service and shown via authError signal
+      console.error('Login failed:', e);
     }
   }
 
-  cancelLogin() {
-    this.selectedUserForLogin.set(null);
-    this.passwordInput.set('');
-    this.loginError.set('');
+  async confirmRegister() {
+    const email = this.emailInput();
+    const pass = this.passwordInput();
+    const name = this.registerName();
+
+    if (!email || !pass || !name) {
+      return;
+    }
+
+    try {
+      await this.auth.register(email, pass, name);
+      // Success: reset state
+      this.emailInput.set('');
+      this.passwordInput.set('');
+      this.registerName.set('');
+      this.isRegistering.set(false);
+    } catch (e: any) {
+      console.error('Registration failed:', e);
+    }
+  }
+
+  toggleRegistration() {
+    this.isRegistering.update(v => !v);
+    this.auth.authError.set(null);
   }
 
   logout() {
-    this.db.logout();
+    this.auth.logout();
     this.currentView.set('dashboard');
   }
 

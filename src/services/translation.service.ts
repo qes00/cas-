@@ -34,7 +34,7 @@ const translations = {
     open: 'Open',
     closed: 'Closed',
     stockAlerts: 'Stock Alerts',
-    below5Units: 'Below 5 Units',
+    below5Units: 'Low Stock Alert',
     product: 'Product',
     variant: 'Variant',
     sku: 'SKU',
@@ -138,6 +138,19 @@ const translations = {
     confirmDeleteExpense: 'Are you sure you want to delete this expense? The amount will be returned to the expected cash.',
     delete: 'Delete',
     items: 'items',
+    // New Auth translations
+    email: 'Email',
+    enterEmail: 'user@example.com',
+    signInPrompt: 'Sign In',
+    createAccount: 'Create Account',
+    noAccount: "Don't have an account?",
+    register: 'Register',
+    backToLogin: 'Back to login',
+    name: 'Name',
+    fullName: 'Your name',
+    passwordHint: 'At least 6 characters',
+    loading: 'Loading',
+    offline: 'Offline',
   },
   es: {
     // General & Nav
@@ -170,7 +183,7 @@ const translations = {
     open: 'Abierta',
     closed: 'Cerrada',
     stockAlerts: 'Alertas de Stock',
-    below5Units: 'Menos de 5 unidades',
+    below5Units: 'Alerta de Stock Bajo',
     product: 'Producto',
     variant: 'Variante',
     sku: 'SKU',
@@ -274,6 +287,19 @@ const translations = {
     confirmDeleteExpense: '¿Estás seguro de eliminar este gasto? El monto regresará al efectivo esperado.',
     delete: 'Eliminar',
     items: 'items',
+    // New Auth translations
+    email: 'Email',
+    enterEmail: 'usuario@ejemplo.com',
+    signInPrompt: 'Iniciar Sesión',
+    createAccount: 'Crear Cuenta',
+    noAccount: '¿No tienes cuenta?',
+    register: 'Regístrate',
+    backToLogin: 'Volver al inicio de sesión',
+    name: 'Nombre',
+    fullName: 'Tu nombre',
+    passwordHint: 'Mínimo 6 caracteres',
+    loading: 'Cargando',
+    offline: 'Sin Conexión',
   }
 };
 

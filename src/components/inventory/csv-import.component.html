@@ -1,0 +1,303 @@
+<div class="csv-import-container">
+    <div class="csv-import-header">
+        <h2>📥 Importación Masiva de Productos</h2>
+        <button (click)="downloadTemplate()" class="btn-download">
+            📄 Descargar Plantilla CSV
+        </button>
+    </div>
+
+    @if (importSuccess()) {
+    <div class="success-message">
+        <h3>✅ Importación Exitosa</h3>
+        <p>Se importaron {{ importedCount() }} productos correctamente.</p>
+    </div>
+    } @else {
+    <!-- File Upload Area -->
+    <div class="file-upload-area" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+        <div class="upload-icon">📤</div>
+        <p>Arrastra y suelta tu archivo CSV aquí</p>
+        <p class="upload-hint">o</p>
+        <label for="file-input" class="btn-upload">
+            Seleccionar Archivo
+        </label>
+        <input id="file-input" type="file" accept=".csv" (change)="onFileSelected($event)" style="display: none;">
+    </div>
+
+    <!-- Validation Errors -->
+    @if (validationErrors().length > 0) {
+    <div class="validation-errors">
+        <h3>⚠️ Errores de Validación ({{ validationErrors().length }})</h3>
+        <div class="error-list">
+            @for (error of validationErrors(); track error) {
+            <div class="error-item">
+                <strong>Fila {{ error.row }}:</strong> {{ error.field }} - {{ error.message }}
+            </div>
+            }
+        </div>
+    </div>
+    }
+
+    <!-- Data Preview -->
+    @if (parsedData().length > 0) {
+    <div class="data-preview">
+        <h3>📋 Vista Previa ({{ parsedData().length }} productos)</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nombre</th>
+                        <th>Código</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Costo</th>
+                        <th>Stock</th>
+                        <th>Stock Mín.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (row of parsedData(); track row.codigo_barras; let i = $index) {
+                    <tr>
+                        <td>{{ i + 1 }}</td>
+                        <td>{{ row.nombre }}</td>
+                        <td>{{ row.codigo_barras }}</td>
+                        <td>{{ row.categoria }}</td>
+                        <td>${{ row.precio }}</td>
+                        <td>${{ row.costo }}</td>
+                        <td>{{ row.stock }}</td>
+                        <td>{{ row.stock_minimo || 5 }}</td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="import-actions">
+            <button (click)="resetImport()" class="btn-cancel" [disabled]="isProcessing()">
+                Cancelar
+            </button>
+            <button (click)="importProducts()" class="btn-import"
+                [disabled]="isProcessing() || validationErrors().length > 0">
+                @if (isProcessing()) {
+                ⏳ Importando...
+                } @else {
+                ✅ Importar Productos
+                }
+            </button>
+        </div>
+    </div>
+    }
+    }
+</div>
+
+<style>
+    .csv-import-container {
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .csv-import-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+
+    .csv-import-header h2 {
+        margin: 0;
+        color: #2c3e50;
+    }
+
+    .btn-download {
+        padding: 10px 20px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.3s;
+    }
+
+    .btn-download:hover {
+        background: #2980b9;
+    }
+
+    .file-upload-area {
+        border: 3px dashed #bdc3c7;
+        border-radius: 10px;
+        padding: 60px 40px;
+        text-align: center;
+        background: #ecf0f1;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+    .file-upload-area:hover {
+        border-color: #3498db;
+        background: #d5dbdd;
+    }
+
+    .upload-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+
+    .file-upload-area p {
+        margin: 10px 0;
+        color: #7f8c8d;
+        font-size: 16px;
+    }
+
+    .upload-hint {
+        font-size: 14px !important;
+        color: #95a5a6 !important;
+    }
+
+    .btn-upload {
+        display: inline-block;
+        padding: 12px 30px;
+        background: #2ecc71;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        transition: background 0.3s;
+        margin-top: 10px;
+    }
+
+    .btn-upload:hover {
+        background: #27ae60;
+    }
+
+    .validation-errors {
+        margin: 30px 0;
+        padding: 20px;
+        background: #ffe6e6;
+        border: 2px solid #e74c3c;
+        border-radius: 8px;
+    }
+
+    .validation-errors h3 {
+        margin: 0 0 15px 0;
+        color: #c0392b;
+    }
+
+    .error-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .error-item {
+        padding: 8px;
+        margin: 5px 0;
+        background: white;
+        border-left: 4px solid #e74c3c;
+        border-radius: 3px;
+        font-size: 14px;
+    }
+
+    .data-preview {
+        margin-top: 30px;
+    }
+
+    .data-preview h3 {
+        margin-bottom: 20px;
+        color: #2c3e50;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+
+    th {
+        background: #34495e;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+    }
+
+    td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .import-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .btn-cancel,
+    .btn-import {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-cancel {
+        background: #95a5a6;
+        color: white;
+    }
+
+    .btn-cancel:hover:not(:disabled) {
+        background: #7f8c8d;
+    }
+
+    .btn-import {
+        background: #2ecc71;
+        color: white;
+    }
+
+    .btn-import:hover:not(:disabled) {
+        background: #27ae60;
+    }
+
+    .btn-import:disabled,
+    .btn-cancel:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .success-message {
+        text-align: center;
+        padding: 60px 40px;
+        background: #d5f4e6;
+        border: 2px solid #2ecc71;
+        border-radius: 10px;
+    }
+
+    .success-message h3 {
+        color: #27ae60;
+        margin: 0 0 15px 0;
+        font-size: 28px;
+    }
+
+    .success-message p {
+        color: #16a085;
+        font-size: 18px;
+        margin: 0;
+    }
+</style>

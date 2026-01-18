@@ -1,0 +1,448 @@
+/* ========================================
+   Theme System - Light & Dark Mode
+   ======================================== */
+
+/* ========================================
+   CSS Variables - Light Theme (Default)
+   ======================================== */
+:root,
+[data-theme="light"],
+.light-theme {
+  /* Primary Colors */
+  --primary-color: #3498db;
+  --primary-hover: #2980b9;
+  --primary-light: #ebf5fb;
+
+  /* Secondary Colors */
+  --secondary-color: #2ecc71;
+  --secondary-hover: #27ae60;
+  --secondary-light: #d5f4e6;
+
+  /* Accent Colors */
+  --accent-color: #f39c12;
+  --accent-hover: #e67e22;
+  --danger-color: #e74c3c;
+  --danger-hover: #c0392b;
+  --warning-color: #f39c12;
+  --info-color: #3498db;
+  --success-color: #2ecc71;
+
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #ecf0f1;
+  --bg-hover: #e9ecef;
+
+  /* Text Colors */
+  --text-primary: #2c3e50;
+  --text-secondary: #7f8c8d;
+  --text-tertiary: #95a5a6;
+  --text-inverse: #ffffff;
+
+  /* Border Colors */
+  --border-color: #dee2e6;
+  --border-light: #ecf0f1;
+  --border-dark: #bdc3c7;
+
+  /* Shadow Colors */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15);
+
+  /* Card & Component Colors */
+  --card-bg: #ffffff;
+  --card-border: #e9ecef;
+
+  /* Input Colors */
+  --input-bg: #ffffff;
+  --input-border: #ced4da;
+  --input-focus-border: #3498db;
+  --input-text: #2c3e50;
+
+  /* Table Colors */
+  --table-header-bg: #34495e;
+  --table-header-text: #ffffff;
+  --table-row-hover: #f8f9fa;
+  --table-border: #ecf0f1;
+}
+
+/* ========================================
+   CSS Variables - Dark Theme
+   ======================================== */
+[data-theme="dark"],
+.dark-theme {
+  /* Primary Colors */
+  --primary-color: #3498db;
+  --primary-hover: #5dade2;
+  --primary-light: #1a3a52;
+
+  /* Secondary Colors */
+  --secondary-color: #2ecc71;
+  --secondary-hover: #58d68d;
+  --secondary-light: #1e4d2b;
+
+  /* Accent Colors */
+  --accent-color: #f39c12;
+  --accent-hover: #f5b041;
+  --danger-color: #e74c3c;
+  --danger-hover: #ec7063;
+  --warning-color: #f39c12;
+  --info-color: #3498db;
+  --success-color: #2ecc71;
+
+  /* Background Colors */
+  --bg-primary: #1a1d23;
+  --bg-secondary: #24272f;
+  --bg-tertiary: #2c3038;
+  --bg-hover: #34373f;
+
+  /* Text Colors */
+  --text-primary: #ecf0f1;
+  --text-secondary: #bdc3c7;
+  --text-tertiary: #95a5a6;
+  --text-inverse: #2c3e50;
+
+  /* Border Colors */
+  --border-color: #3a3d45;
+  --border-light: #2c3038;
+  --border-dark: #4a4d55;
+
+  /* Shadow Colors */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.5);
+
+  /* Card & Component Colors */
+  --card-bg: #24272f;
+  --card-border: #3a3d45;
+
+  /* Input Colors */
+  --input-bg: #2c3038;
+  --input-border: #3a3d45;
+  --input-focus-border: #3498db;
+  --input-text: #ecf0f1;
+
+  /* Table Colors */
+  --table-header-bg: #2c3038;
+  --table-header-text: #ecf0f1;
+  --table-row-hover: #2c3038;
+  --table-border: #3a3d45;
+}
+
+/* Force dark mode application */
+[data-theme="dark"] {
+  background-color: #24272f !important;
+  color: #ecf0f1 !important;
+}
+
+/* Override Tailwind classes with dark theme */
+[data-theme="dark"] .bg-slate-50,
+[data-theme="dark"] .bg-slate-100,
+[data-theme="dark"] .bg-white {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .bg-slate-900 {
+  background-color: var(--bg-primary) !important;
+}
+
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+/* ========================================
+   Base Styles with Theme Variables
+   ======================================== */
+body {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ========================================
+   Component Theming
+   ======================================== */
+
+/* Cards */
+.card,
+.metric-card,
+.chart-container,
+.data-preview {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border-color: var(--card-border);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+.card:hover,
+.metric-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Buttons */
+button,
+.btn {
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: var(--text-inverse);
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: var(--text-inverse);
+}
+
+.btn-secondary:hover {
+  background-color: var(--secondary-hover);
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  color: var(--text-inverse);
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-hover);
+}
+
+/* Inputs */
+input,
+select,
+textarea {
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--input-border);
+  transition: all 0.3s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--input-focus-border);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Tables */
+table {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+table thead {
+  background-color: var(--table-header-bg);
+  color: var(--table-header-text);
+}
+
+table tbody tr {
+  border-bottom: 1px solid var(--table-border);
+}
+
+table tbody tr:hover {
+  background-color: var(--table-row-hover);
+}
+
+/* Metrics/Stats */
+.metric-value {
+  color: var(--text-primary);
+}
+
+.metric-content h3 {
+  color: var(--text-secondary);
+}
+
+/* Headers */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary);
+}
+
+/* Links */
+a {
+  color: var(--primary-color);
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--primary-hover);
+}
+
+/* Modals/Dialogs */
+.modal,
+.dialog {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Dividers */
+hr {
+  border-color: var(--border-color);
+}
+
+/* ========================================
+   Theme Toggle Button Styles
+   ======================================== */
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.theme-toggle:hover {
+  background-color: var(--bg-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.theme-toggle-icon {
+  font-size: 18px;
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover .theme-toggle-icon {
+  transform: rotate(20deg);
+}
+
+/* Dark theme specific adjustments */
+[data-theme="dark"] .theme-toggle-icon.sun {
+  display: none;
+}
+
+[data-theme="light"] .theme-toggle-icon.moon {
+  display: none;
+}
+
+/* ========================================
+   Smooth Transitions
+   ======================================== */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+}
+
+/* Disable transitions on theme change for instant feedback */
+.theme-transitioning * {
+  transition: none !important;
+}
+
+/* ========================================
+   Accessibility
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: #000000;
+  }
+
+  [data-theme="dark"] {
+    --border-color: #ffffff;
+  }
+}
+/* ========================================
+   Responsive Design Improvements
+   ======================================== */
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .p-6, .px-6, .py-6 {
+    padding: 1rem !important;
+  }
+  
+  .p-4, .px-4, .py-4 {
+    padding: 0.75rem !important;
+  }
+
+  .metrics-grid,
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.25rem !important; }
+  h3 { font-size: 1.1rem !important; }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  button {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+
+  .chart-canvas {
+    height: 250px !important;
+  }
+
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Dark mode component overrides */
+[data-theme="dark"] .file-upload-area {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .analytics-dashboard {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .text-slate-400 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] .border-slate-300 {
+  border-color: var(--border-color) !important;
+}

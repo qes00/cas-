@@ -1,21 +1,17 @@
-
 <div class="h-full flex flex-col">
-  
+
   <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
     <h2 class="text-3xl font-bold text-slate-800">{{ t('inventoryTitle') }}</h2>
-    
+
     <div class="flex gap-4 w-full md:w-auto">
       <div class="relative flex-1 md:w-64">
         <span class="material-icons absolute left-3 top-2.5 text-slate-400">search</span>
-        <input 
-          type="text" 
-          [(ngModel)]="searchQuery" 
-          [placeholder]="t('scanOrSearch')" 
-          class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
-        >
+        <input type="text" [(ngModel)]="searchQuery" [placeholder]="t('scanOrSearch')"
+          class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900">
       </div>
 
-      <button (click)="openModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow flex items-center gap-2 whitespace-nowrap">
+      <button (click)="openModal()"
+        class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow flex items-center gap-2 whitespace-nowrap">
         <span class="material-icons">add</span>
         {{ t('addProduct') }}
       </button>
@@ -37,86 +33,94 @@
         </thead>
         <tbody class="divide-y divide-slate-100">
           @for (product of filteredProducts(); track product.id) {
-            <!-- Main Product Row -->
-            <tr class="hover:bg-slate-50 group cursor-pointer transition-colors" (click)="toggleExpand(product.id)">
-              <td class="pl-6 py-4">
-                 <span class="material-icons text-slate-400 transition-transform duration-200" 
-                       [class.rotate-90]="isExpanded(product.id)">
-                   chevron_right
-                 </span>
-              </td>
-              <td class="px-6 py-4">
-                <div class="flex items-center">
-                  <img [src]="product.image || ''" width="40" height="40" class="rounded mr-3 bg-slate-200 object-cover">
-                  <div>
-                    <div class="font-bold text-slate-900">{{ product.name }}</div>
-                    <div class="text-xs text-slate-500 truncate max-w-[200px]">{{ product.description }}</div>
+          <!-- Main Product Row -->
+          <tr class="hover:bg-slate-50 group cursor-pointer transition-colors" (click)="toggleExpand(product.id)">
+            <td class="pl-6 py-4">
+              <span class="material-icons text-slate-400 transition-transform duration-200"
+                [class.rotate-90]="isExpanded(product.id)">
+                chevron_right
+              </span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex items-center">
+                <img [src]="getImageSrc(product)" (error)="onImageError($event, product.id)"
+                  (load)="onImageLoad($event, product.id)" width="40" height="40"
+                  class="rounded mr-3 bg-slate-200 object-cover"
+                  [class.opacity-50]="imageLoadStates().get(product.id) === 'loading'" alt="Product image">
+                <div>
+                  <div class="font-bold text-slate-900">{{ product.name }}</div>
+                  <div class="text-xs text-slate-500 truncate max-w-[200px]">{{ product.description }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-sm text-slate-600">
+              {{ db.getVariantsForProduct(product.id).length }} {{ t('variants') }}
+            </td>
+            <td class="px-6 py-4">
+              <span class="inline-block px-2 py-1 bg-slate-100 rounded text-slate-700 font-mono text-xs font-bold">
+                {{ getProductStock(product.id) }} {{ t('units') }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-right">
+              <div class="flex justify-end gap-2" (click)="$event.stopPropagation()">
+                <button (click)="editProduct(product)" class="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                  [title]="t('edit')">
+                  <span class="material-icons text-sm">edit</span>
+                </button>
+                <button (click)="deleteProduct(product)" class="p-2 text-red-500 hover:bg-red-50 rounded"
+                  [title]="t('delete')">
+                  <span class="material-icons text-sm">delete</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Expanded Variant View -->
+          @if (isExpanded(product.id)) {
+          @for (variant of db.getVariantsForProduct(product.id); track variant.id) {
+          <tr class="bg-slate-50/70 border-b border-slate-100 animate-in fade-in slide-in-from-top-1">
+            <td></td> <!-- Indent -->
+            <td colspan="4" class="py-2 pr-6">
+              <div class="flex items-center text-xs text-slate-600">
+                <div class="w-8 flex justify-center mr-4">
+                  <span class="material-icons text-slate-300 text-sm">subdirectory_arrow_right</span>
+                </div>
+
+                <div class="flex-1 grid grid-cols-4 items-center gap-4">
+                  <div class="col-span-1 font-medium text-slate-800">{{ variant.attributeSummary }}</div>
+                  <div class="col-span-1 font-mono text-slate-500">{{ variant.sku }}</div>
+                  <div class="col-span-1" [class.text-red-600]="variant.stock < (product.lowStockThreshold || 5)"
+                    [class.font-bold]="variant.stock < (product.lowStockThreshold || 5)">
+                    {{ variant.stock }} units
+                  </div>
+                  <div class="col-span-1 text-right flex items-center justify-end gap-3">
+                    <span class="font-semibold">S/.{{ variant.price }}</span>
+                    <button (click)="deleteVariant(variant.id)"
+                      class="text-slate-300 hover:text-red-500 transition-colors p-1 rounded hover:bg-white"
+                      [title]="t('delete')">
+                      <span class="material-icons text-sm">delete_outline</span>
+                    </button>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 text-sm text-slate-600">
-                {{ db.getVariantsForProduct(product.id).length }} {{ t('variants') }}
-              </td>
-              <td class="px-6 py-4">
-                 <span class="inline-block px-2 py-1 bg-slate-100 rounded text-slate-700 font-mono text-xs font-bold">
-                   {{ getProductStock(product.id) }} {{ t('units') }}
-                 </span>
-              </td>
-              <td class="px-6 py-4 text-right">
-                <div class="flex justify-end gap-2" (click)="$event.stopPropagation()">
-                  <button (click)="editProduct(product)" class="p-2 text-blue-600 hover:bg-blue-50 rounded" [title]="t('edit')">
-                    <span class="material-icons text-sm">edit</span>
-                  </button>
-                  <button (click)="deleteProduct(product)" class="p-2 text-red-500 hover:bg-red-50 rounded" [title]="t('delete')">
-                    <span class="material-icons text-sm">delete</span>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            
-            <!-- Expanded Variant View -->
-            @if (isExpanded(product.id)) {
-              @for (variant of db.getVariantsForProduct(product.id); track variant.id) {
-                 <tr class="bg-slate-50/70 border-b border-slate-100 animate-in fade-in slide-in-from-top-1">
-                   <td></td> <!-- Indent -->
-                   <td colspan="4" class="py-2 pr-6">
-                     <div class="flex items-center text-xs text-slate-600">
-                       <div class="w-8 flex justify-center mr-4">
-                         <span class="material-icons text-slate-300 text-sm">subdirectory_arrow_right</span>
-                       </div>
-                       
-                       <div class="flex-1 grid grid-cols-4 items-center gap-4">
-                         <div class="col-span-1 font-medium text-slate-800">{{ variant.attributeSummary }}</div>
-                         <div class="col-span-1 font-mono text-slate-500">{{ variant.sku }}</div>
-                         <div class="col-span-1" [class.text-red-600]="variant.stock < 5" [class.font-bold]="variant.stock < 5">
-                            {{ variant.stock }} units
-                         </div>
-                         <div class="col-span-1 text-right flex items-center justify-end gap-3">
-                            <span class="font-semibold">S/.{{ variant.price }}</span>
-                            <button (click)="deleteVariant(variant.id)" class="text-slate-300 hover:text-red-500 transition-colors p-1 rounded hover:bg-white" [title]="t('delete')">
-                              <span class="material-icons text-sm">delete_outline</span>
-                            </button>
-                         </div>
-                       </div>
-                     </div>
-                   </td>
-                 </tr>
-              }
-              @if (db.getVariantsForProduct(product.id).length === 0) {
-                 <tr class="bg-slate-50/70">
-                   <td></td>
-                   <td colspan="4" class="py-3 text-center text-xs text-slate-400 italic">No variants available</td>
-                 </tr>
-              }
-            }
+              </div>
+            </td>
+          </tr>
+          }
+          @if (db.getVariantsForProduct(product.id).length === 0) {
+          <tr class="bg-slate-50/70">
+            <td></td>
+            <td colspan="4" class="py-3 text-center text-xs text-slate-400 italic">No variants available</td>
+          </tr>
+          }
+          }
 
           } @empty {
-             <tr>
-               <td colspan="5" class="px-6 py-12 text-center text-slate-400">
-                 <span class="material-icons text-4xl mb-2">inventory_2</span>
-                 <p>{{ t('noProductsFound') }}</p>
-               </td>
-             </tr>
+          <tr>
+            <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+              <span class="material-icons text-4xl mb-2">inventory_2</span>
+              <p>{{ t('noProductsFound') }}</p>
+            </td>
+          </tr>
           }
         </tbody>
       </table>
@@ -126,146 +130,175 @@
 
 <!-- Add Modal -->
 @if (showAddModal()) {
-  <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-      
-      <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-        <h3 class="font-bold text-xl text-slate-800">
-          {{ editingProductId() ? t('edit') + ' ' + t('product') : t('newProductMatrix') }}
-        </h3>
-        <button (click)="closeModal()" class="text-slate-400 hover:text-red-500">
-          <span class="material-icons">close</span>
-        </button>
-      </div>
+<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
 
-      <div class="p-6 overflow-y-auto flex-1 space-y-8">
-        
-        <!-- Basic Info -->
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="md:col-span-1">
-            <label class="block text-sm font-bold text-slate-700 mb-2">Product Image (Upload or URL)</label>
-            
-            <div class="mb-2">
-               <input 
-                 type="text" 
-                 [(ngModel)]="newImageUrl" 
-                 (change)="processImageUrl()"
-                 placeholder="Paste image URL (e.g. Google Drive link)"
-                 class="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-900"
-               >
+    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+      <h3 class="font-bold text-xl text-slate-800">
+        {{ editingProductId() ? t('edit') + ' ' + t('product') : t('newProductMatrix') }}
+      </h3>
+      <button (click)="closeModal()" class="text-slate-400 hover:text-red-500">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="p-6 overflow-y-auto flex-1 space-y-8">
+
+      <!-- Basic Info -->
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-1">
+          <label class="block text-sm font-bold text-slate-700 mb-2">Product Image (Upload or URL)</label>
+
+          <div class="mb-2">
+            <input type="text" [(ngModel)]="newImageUrl" (change)="processImageUrl()"
+              placeholder="Paste image URL (e.g. Google Drive link)"
+              class="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-900">
+          </div>
+
+          <div
+            class="aspect-square bg-slate-100 rounded-lg flex items-center justify-center relative border-2 border-dashed border-slate-300 overflow-hidden">
+
+            @if (previewImageSrc) {
+            <img [src]="previewImageSrc" (error)="onImageError($event, 'preview')"
+              (load)="onImageLoad($event, 'preview')" alt="Product Preview" class="object-cover w-full h-full"
+              [class.opacity-50]="imageLoadStates().get('preview') === 'loading'">
+            @if (imageLoadStates().get('preview') === 'error') {
+            <div
+              class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-100 text-red-600 px-3 py-1 rounded text-xs">
+              Error al cargar imagen
             </div>
-
-            <div class="aspect-square bg-slate-100 rounded-lg flex items-center justify-center relative border-2 border-dashed border-slate-300 overflow-hidden">
-
-              @if (previewImageSrc) {
-                <img [src]="previewImageSrc" alt="Product Preview" class="object-cover w-full h-full">
-                <button (click)="newImageBase64.set(null); newImageUrl.set('')" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md transition-transform duration-200 hover:scale-110">
-                  <span class="material-icons text-base">delete</span>
-                </button>
+            }
+            <button (click)="newImageBase64.set(null); newImageUrl.set('')"
+              class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md transition-transform duration-200 hover:scale-110">
+              <span class="material-icons text-base">delete</span>
+            </button>
+            } @else {
+            <div class="text-center text-slate-400 p-4">
+              @if (isImageProcessing()) {
+              <div class="animate-pulse">Processing...</div>
               } @else {
-                <div class="text-center text-slate-400 p-4">
-                  @if (isImageProcessing()) {
-                    <div class="animate-pulse">Processing...</div>
-                  } @else {
-                    <span class="material-icons text-4xl">add_a_photo</span>
-                    <p class="text-xs mt-1">Click to upload or paste URL above</p>
-                  }
-                </div>
-              }
-              <input #fileInput type="file" class="hidden" (change)="onFileSelected($event)" accept="image/*">
-              @if (!isImageProcessing() && !previewImageSrc) {
-                <button (click)="fileInput.click()" class="absolute inset-0 w-full h-full cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"></button>
+              <span class="material-icons text-4xl">add_a_photo</span>
+              <p class="text-xs mt-1">Click to upload or paste URL above</p>
               }
             </div>
-          </div>
-
-          <div class="md:col-span-2 space-y-6">
-            <div>
-              <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('productName') }}</label>
-              <input type="text" [(ngModel)]="newName" (change)="generatePreview()" class="w-full border border-slate-300 rounded p-2 bg-white text-slate-900" placeholder="e.g. Summer Dress">
-            </div>
-            <div>
-               <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('basePrice') }}</label>
-               <input type="number" [(ngModel)]="newBasePrice" (change)="generatePreview()" class="w-full border border-slate-300 rounded p-2 bg-white text-slate-900" placeholder="0.00">
-            </div>
-          </div>
-          
-          <div class="col-span-full">
-            <div class="flex justify-between items-center mb-2">
-               <label class="block text-sm font-bold text-slate-700">{{ t('description') }}</label>
-               <button (click)="generateAiDescription()" [disabled]="isGenerating()" class="text-purple-600 text-xs font-bold hover:underline flex items-center gap-1">
-                 <span class="material-icons text-sm">auto_awesome</span>
-                 {{ isGenerating() ? t('writing') : t('generateWithAi') }}
-               </button>
-            </div>
-            <textarea [(ngModel)]="newDesc" rows="2" class="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-900"></textarea>
-          </div>
-        </section>
-
-        <!-- Attribute Matrix Builder -->
-        <section class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
-            <span class="material-icons text-sm">category</span> {{ t('attributesAndVariants') }}
-          </h4>
-          
-          <div class="space-y-3 mb-4">
-            @for (attr of attributes(); track $index) {
-              <div class="flex gap-4 items-start">
-                <input type="text" [(ngModel)]="attr.name" (change)="generatePreview()" [placeholder]="t('attrNamePlaceholder')" class="w-1/3 border border-slate-300 rounded p-2 text-sm bg-white text-slate-900">
-                <input type="text" [(ngModel)]="attr.values" (change)="generatePreview()" [placeholder]="t('attrValuesPlaceholder')" class="flex-1 border border-slate-300 rounded p-2 text-sm bg-white text-slate-900">
-                <button (click)="removeAttribute($index)" class="p-2 text-red-400 hover:text-red-600">
-                  <span class="material-icons">delete</span>
-                </button>
-              </div>
+            }
+            <input #fileInput type="file" class="hidden" (change)="onFileSelected($event)" accept="image/*">
+            @if (!isImageProcessing() && !previewImageSrc) {
+            <button (click)="fileInput.click()"
+              class="absolute inset-0 w-full h-full cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"></button>
             }
           </div>
-          <button (click)="addAttribute()" class="text-sm text-blue-600 font-bold hover:underline">+ {{ t('addAttribute') }}</button>
-        </section>
+        </div>
 
-        <!-- Preview Table -->
-        @if (previewVariants().length > 0) {
-          <section>
-            <h4 class="font-bold text-slate-700 mb-2">{{ t('variantsPreview') }} ({{ previewVariants().length }})</h4>
-            <div class="border border-slate-200 rounded-lg overflow-hidden">
-              <table class="w-full text-left text-sm">
-                <thead class="bg-slate-100 text-slate-600">
-                  <tr>
-                    <th class="px-4 py-2">{{ t('variant') }}</th>
-                    <th class="px-4 py-2">{{ t('priceOverride') }}</th>
-                    <th class="px-4 py-2">{{ t('initialStock') }}</th>
-                    <th class="px-4 py-2">{{ t('sku') }}</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  @for (v of previewVariants(); track $index) {
-                    <tr>
-                      <td class="px-4 py-2 font-medium">{{ v.attributeSummary }}</td>
-                      <td class="px-4 py-2">
-                        <!-- Larger Input -->
-                        <input type="number" [(ngModel)]="v.price" class="w-full md:w-24 border border-slate-300 rounded px-2 py-2 text-center font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                      </td>
-                      <td class="px-4 py-2">
-                        <!-- Larger Input -->
-                        <input type="number" [(ngModel)]="v.stock" class="w-full md:w-24 border border-slate-300 rounded px-2 py-2 text-center font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                      </td>
-                      <td class="px-4 py-2">
-                        <!-- Larger Input -->
-                        <input type="text" [(ngModel)]="v.sku" class="w-full md:w-40 border border-slate-300 rounded px-2 py-2 font-mono text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none" [placeholder]="t('auto')">
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+        <div class="md:col-span-2 space-y-6">
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('productName') }}</label>
+            <input type="text" [(ngModel)]="newName" (change)="generatePreview()"
+              class="w-full border border-slate-300 rounded p-2 bg-white text-slate-900"
+              placeholder="e.g. Summer Dress">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('basePrice') }}</label>
+              <input type="number" [(ngModel)]="newBasePrice" (change)="generatePreview()"
+                class="w-full border border-slate-300 rounded p-2 bg-white text-slate-900" placeholder="0.00">
             </div>
-          </section>
-        }
 
-      </div>
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-2">Umbral Stock Bajo</label>
+              <input type="number" [(ngModel)]="newLowStockThreshold"
+                class="w-full border border-slate-300 rounded p-2 bg-white text-slate-900" placeholder="10">
+            </div>
+          </div>
+        </div>
 
-      <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-        <button (click)="closeModal()" class="px-6 py-2 rounded-lg font-bold text-slate-600 hover:bg-slate-200">{{ t('cancel') }}</button>
-        <button (click)="saveProduct()" class="px-6 py-2 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-700 shadow">{{ t('saveProduct') }}</button>
-      </div>
+        <div class="col-span-full">
+          <div class="flex justify-between items-center mb-2">
+            <label class="block text-sm font-bold text-slate-700">{{ t('description') }}</label>
+
+          </div>
+          <textarea [(ngModel)]="newDesc" rows="2"
+            class="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-900"></textarea>
+        </div>
+      </section>
+
+      <!-- Attribute Matrix Builder -->
+      <section class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+        <h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+          <span class="material-icons text-sm">category</span> {{ t('attributesAndVariants') }}
+        </h4>
+
+        <div class="space-y-3 mb-4">
+          @for (attr of attributes(); track $index) {
+          <div class="flex gap-4 items-start">
+            <input type="text" [(ngModel)]="attr.name" (change)="generatePreview()"
+              [placeholder]="t('attrNamePlaceholder')"
+              class="w-1/3 border border-slate-300 rounded p-2 text-sm bg-white text-slate-900">
+            <input type="text" [(ngModel)]="attr.values" (change)="generatePreview()"
+              [placeholder]="t('attrValuesPlaceholder')"
+              class="flex-1 border border-slate-300 rounded p-2 text-sm bg-white text-slate-900">
+            <button (click)="removeAttribute($index)" class="p-2 text-red-400 hover:text-red-600">
+              <span class="material-icons">delete</span>
+            </button>
+          </div>
+          }
+        </div>
+        <button (click)="addAttribute()" class="text-sm text-blue-600 font-bold hover:underline">+ {{ t('addAttribute')
+          }}</button>
+      </section>
+
+      <!-- Preview Table -->
+      @if (previewVariants().length > 0) {
+      <section>
+        <h4 class="font-bold text-slate-700 mb-2">{{ t('variantsPreview') }} ({{ previewVariants().length }})</h4>
+        <div class="border border-slate-200 rounded-lg overflow-hidden">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-100 text-slate-600">
+              <tr>
+                <th class="px-4 py-2">{{ t('variant') }}</th>
+                <th class="px-4 py-2">{{ t('priceOverride') }}</th>
+                <th class="px-4 py-2">{{ t('initialStock') }}</th>
+                <th class="px-4 py-2">{{ t('sku') }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (v of previewVariants(); track $index) {
+              <tr>
+                <td class="px-4 py-2 font-medium">{{ v.attributeSummary }}</td>
+                <td class="px-4 py-2">
+                  <!-- Larger Input -->
+                  <input type="number" [(ngModel)]="v.price"
+                    class="w-full md:w-24 border border-slate-300 rounded px-2 py-2 text-center font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </td>
+                <td class="px-4 py-2">
+                  <!-- Larger Input -->
+                  <input type="number" [(ngModel)]="v.stock"
+                    class="w-full md:w-24 border border-slate-300 rounded px-2 py-2 text-center font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </td>
+                <td class="px-4 py-2">
+                  <!-- Larger Input -->
+                  <input type="text" [(ngModel)]="v.sku"
+                    class="w-full md:w-40 border border-slate-300 rounded px-2 py-2 font-mono text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    [placeholder]="t('auto')">
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      }
+
+    </div>
+
+    <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+      <button (click)="closeModal()" class="px-6 py-2 rounded-lg font-bold text-slate-600 hover:bg-slate-200">{{
+        t('cancel') }}</button>
+      <button (click)="saveProduct()"
+        class="px-6 py-2 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-700 shadow">{{ t('saveProduct')
+        }}</button>
     </div>
   </div>
+</div>
 }

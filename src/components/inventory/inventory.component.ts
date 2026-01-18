@@ -2,7 +2,7 @@ import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DbService } from '../../services/db.service';
-import { GeminiService } from '../../services/gemini.service';
+
 import { ScannerService } from '../../services/scanner.service';
 import { TranslationService } from '../../services/translation.service';
 import { Product, Variant } from '../../services/data.types';
@@ -16,12 +16,12 @@ import { Subscription } from 'rxjs';
 })
 export class InventoryComponent implements OnInit, OnDestroy {
   db = inject(DbService);
-  gemini = inject(GeminiService);
+
   scanner = inject(ScannerService);
   translationService = inject(TranslationService);
 
   showAddModal = signal(false);
-  isGenerating = signal(false);
+
   searchQuery = signal('');
 
   // UI State for Collapsible Rows
@@ -34,10 +34,18 @@ export class InventoryComponent implements OnInit, OnDestroy {
   newName = signal('');
   newCategory = signal('General');
   newBasePrice = signal(0);
+  newLowStockThreshold = signal(10); // Default to 10
   newDesc = signal('');
   newImageBase64 = signal<string | null>(null);
   newImageUrl = signal('');
   isImageProcessing = signal(false);
+
+  // Image Loading State Management
+  imageLoadStates = signal<Map<string, 'loading' | 'loaded' | 'error'>>(new Map());
+  imageErrors = signal<Set<string>>(new Set());
+
+  // Default fallback image
+  readonly DEFAULT_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD48L3N2Zz4=';
 
   // Matrix Builders
   attributes = signal<{ name: string, values: string }[]>([{ name: 'Size', values: 'S, M, L' }, { name: 'Color', values: 'Red, Blue' }]);
@@ -95,6 +103,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.newName.set('');
     this.newDesc.set('');
     this.newBasePrice.set(0);
+    this.newLowStockThreshold.set(10);
     this.newCategory.set('General');
     this.newImageBase64.set(null);
     this.attributes.set([{ name: 'Size', values: 'S, M, L' }, { name: 'Color', values: 'Red, Blue' }]);
@@ -110,6 +119,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.newName.set(product.name);
     this.newDesc.set(product.description);
     this.newBasePrice.set(product.basePrice);
+    this.newLowStockThreshold.set(product.lowStockThreshold || 10);
     this.newCategory.set(product.category);
     this.newCategory.set(product.category);
 
@@ -289,14 +299,6 @@ export class InventoryComponent implements OnInit, OnDestroy {
     this.previewVariants.set(variants);
   }
 
-  async generateAiDescription() {
-    this.isGenerating.set(true);
-    const attrs = this.attributes().map(a => a.name).join(', ');
-    const desc = await this.gemini.generateProductDescription(this.newName(), attrs);
-    this.newDesc.set(desc);
-    this.isGenerating.set(false);
-  }
-
   processImageUrl() {
     const url = this.newImageUrl().trim();
     if (!url) return;
@@ -306,8 +308,10 @@ export class InventoryComponent implements OnInit, OnDestroy {
     let fileId = '';
 
     const patterns = [
-      /\/file\/d\/([^\/]+)/,
-      /id=([^&]+)/
+      /\/file\/d\/([^\/]+)/,           // Standard share link
+      /id=([^\&]+)/,                   // Query parameter format
+      /\/d\/([^\/\?]+)/,               // Short format
+      /\/open\?id=([^\&]+)/            // Open format
     ];
 
     if (url.includes('drive.google.com')) {
@@ -320,13 +324,26 @@ export class InventoryComponent implements OnInit, OnDestroy {
       }
 
       if (fileId) {
-        finalUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+        // Use the thumbnail format which is more reliable for CORS
+        finalUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
         this.newImageUrl.set(finalUrl);
+        console.log('✅ Google Drive URL converted:', finalUrl);
+      } else {
+        console.warn('⚠️ No se pudo extraer el ID del archivo de Google Drive. Asegúrate de que el link sea público.');
       }
     }
 
     // Clear base64 if URL is set
     this.newImageBase64.set(null);
+
+    // Validate URL format
+    try {
+      new URL(finalUrl);
+    } catch (e) {
+      console.error('❌ URL inválida:', finalUrl);
+      alert('La URL proporcionada no es válida. Por favor verifica el formato.');
+      this.newImageUrl.set('');
+    }
   }
 
   get previewImageSrc(): string | null {
@@ -353,6 +370,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
       description: this.newDesc(),
       category: this.newCategory(),
       basePrice: this.newBasePrice(),
+      lowStockThreshold: this.newLowStockThreshold(),
       attributes: finalAttributes,
       image: finalImage
     };
@@ -376,6 +394,39 @@ export class InventoryComponent implements OnInit, OnDestroy {
     }
 
     this.closeModal();
+  }
+
+  // Image Loading Handlers
+  onImageError(event: Event, imageId: string) {
+    const imgElement = event.target as HTMLImageElement;
+    if (imgElement) {
+      imgElement.src = this.DEFAULT_IMAGE;
+      this.imageErrors.update(errors => {
+        const newErrors = new Set(errors);
+        newErrors.add(imageId);
+        return newErrors;
+      });
+      this.imageLoadStates.update(states => {
+        const newStates = new Map(states);
+        newStates.set(imageId, 'error');
+        return newStates;
+      });
+    }
+  }
+
+  onImageLoad(event: Event, imageId: string) {
+    this.imageLoadStates.update(states => {
+      const newStates = new Map(states);
+      newStates.set(imageId, 'loaded');
+      return newStates;
+    });
+  }
+
+  getImageSrc(product: Product): string {
+    if (this.imageErrors().has(product.id)) {
+      return this.DEFAULT_IMAGE;
+    }
+    return product.image || this.DEFAULT_IMAGE;
   }
 
   t(key: string): string {

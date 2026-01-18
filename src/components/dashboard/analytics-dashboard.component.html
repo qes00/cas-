@@ -1,0 +1,289 @@
+<div class="analytics-dashboard">
+    <div class="dashboard-header">
+        <h2>📊 Dashboard de Analíticas</h2>
+        <div class="date-range-selector">
+            <button [class.active]="dateRange() === 'today'" (click)="onDateRangeChange('today')">
+                Hoy
+            </button>
+            <button [class.active]="dateRange() === 'week'" (click)="onDateRangeChange('week')">
+                Semana
+            </button>
+            <button [class.active]="dateRange() === 'month'" (click)="onDateRangeChange('month')">
+                Mes
+            </button>
+            <button [class.active]="dateRange() === 'year'" (click)="onDateRange Change('year')">
+                Año
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading()) {
+    <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Cargando analíticas...</p>
+    </div>
+    } @else {
+    <!-- Metrics Cards -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #3498db;">💰</div>
+            <div class="metric-content">
+                <h3>Ingresos Hoy</h3>
+                <p class="metric-value">${{ metrics().todayRevenue | number:'1.2-2' }}</p>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #2ecc71;">📈</div>
+            <div class="metric-content">
+                <h3>Ganancia Hoy</h3>
+                <p class="metric-value">${{ metrics().todayProfit | number:'1.2-2' }}</p>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #f39c12;">🛒</div>
+            <div class="metric-content">
+                <h3>Ventas Hoy</h3>
+                <p class="metric-value">{{ metrics().todaySales }}</p>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #9b59b6;">📦</div>
+            <div class="metric-content">
+                <h3>Productos Activos</h3>
+                <p class="metric-value">{{ metrics().activeProducts }}</p>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #e74c3c;">⚠️</div>
+            <div class="metric-content">
+                <h3>Stock Bajo</h3>
+                <p class="metric-value">{{ metrics().lowStockProducts }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+        <!-- Sales Trend Chart -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>📈 Tendencia de Ventas</h3>
+            </div>
+            <div class="chart-canvas">
+                <canvas #salesTrendCanvas></canvas>
+            </div>
+        </div>
+
+        <!-- Top Products Chart -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>🏆 Productos Más Vendidos</h3>
+            </div>
+            <div class="chart-canvas">
+                <canvas #topProductsCanvas></canvas>
+            </div>
+        </div>
+
+        <!-- Category Revenue Chart -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>🎯 Ingresos por Categoría</h3>
+            </div>
+            <div class="chart-canvas">
+                <canvas #categoryRevenueCanvas></canvas>
+            </div>
+        </div>
+    </div>
+    }
+</div>
+
+<style>
+    .analytics-dashboard {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .dashboard-header h2 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 28px;
+    }
+
+    .date-range-selector {
+        display: flex;
+        gap: 10px;
+        background: #ecf0f1;
+        padding: 5px;
+        border-radius: 8px;
+    }
+
+    .date-range-selector button {
+        padding: 10px 20px;
+        border: none;
+        background: transparent;
+        color: #7f8c8d;
+        cursor: pointer;
+        border-radius: 5px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .date-range-selector button.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .date-range-selector button:hover:not(.active) {
+        background: #bdc3c7;
+        color: #2c3e50;
+    }
+
+    .loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px;
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #ecf0f1;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .loading-spinner p {
+        margin-top: 20px;
+        color: #7f8c8d;
+        font-size: 16px;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .metric-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+    }
+
+    .metric-content {
+        flex: 1;
+    }
+
+    .metric-content h3 {
+        margin: 0 0 5px 0;
+        color: #7f8c8d;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .metric-value {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 25px;
+    }
+
+    .chart-container {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .chart-header {
+        margin-bottom: 20px;
+        border-bottom: 2px solid #ecf0f1;
+        padding-bottom: 10px;
+    }
+
+    .chart-header h3 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 18px;
+    }
+
+    .chart-canvas {
+        position: relative;
+        height: 300px;
+    }
+
+    @media (max-width: 768px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .date-range-selector {
+            width: 100%;
+        }
+
+        .date-range-selector button {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+    }
+</style>

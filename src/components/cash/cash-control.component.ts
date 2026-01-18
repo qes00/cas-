@@ -41,7 +41,7 @@ import { CashShift, Expense } from '../../services/data.types';
               <label class="block text-left text-sm font-bold text-slate-700 mb-1">{{ t('openingCash') }}</label>
               <div class="relative">
                 <span class="absolute left-3 top-2 text-slate-400">S/.</span>
-                <input type="number" [(ngModel)]="amountInput" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
+                <input type="number" [(ngModel)]="openingAmount" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
               </div>
             </div>
 
@@ -88,11 +88,11 @@ import { CashShift, Expense } from '../../services/data.types';
                     <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('actualCashCounted') }}</label>
                     <div class="relative">
                       <span class="absolute left-3 top-2 text-slate-400">S/.</span>
-                      <input type="number" [(ngModel)]="amountInput" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none bg-white">
+                      <input type="number" [(ngModel)]="closingAmount" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none bg-white">
                     </div>
                  </div>
 
-                 @if (currentDiff !== 0 && amountInput > 0) {
+                 @if (currentDiff !== 0 && closingAmount > 0) {
                    <div class="text-sm font-bold mb-4" [class.text-red-500]="currentDiff < 0" [class.text-green-500]="currentDiff > 0">
                       {{ t('difference') }}: {{ currentDiff > 0 ? '+' : '' }}S/.{{ currentDiff | number:'1.2-2' }}
                    </div>
@@ -291,43 +291,44 @@ import { CashShift, Expense } from '../../services/data.types';
 export class CashControlComponent {
   db = inject(DbService);
   translationService = inject(TranslationService);
-  
+
   activeShift = this.db.activeShift;
-  
+
   // View State (Expenses vs Sales)
   currentView = signal<'expenses' | 'sales'>('expenses');
-  
-  // Property to hold closing cash input value
-  amountInput: number = 0;
+
+  // Separate properties for opening and closing amounts
+  openingAmount: number = 0;
+  closingAmount: number = 0;
 
   // Expense Form Props
   newExpenseAmount = 0;
   newExpenseCategory: Expense['category'] = 'SUPPLIES';
   newExpenseDesc = '';
-  
+
   get currentDiff(): number {
     const shift = this.activeShift();
     if (!shift) return 0;
-    return this.amountInput - shift.endCashExpected;
+    return this.closingAmount - shift.endCashExpected;
   }
 
   currentShiftExpenses = computed(() => {
     const shift = this.activeShift();
     if (!shift) return [];
-    return this.db.expenses().filter(e => e.shiftId === shift.id).sort((a,b) => b.timestamp - a.timestamp);
+    return this.db.expenses().filter(e => e.shiftId === shift.id).sort((a, b) => b.timestamp - a.timestamp);
   });
-  
+
   // New computed for detailed sales list
   currentShiftSales = computed(() => {
     const shift = this.activeShift();
     if (!shift) return [];
-    return this.db.sales().filter(s => s.shiftId === shift.id).sort((a,b) => b.timestamp - a.timestamp);
+    return this.db.sales().filter(s => s.shiftId === shift.id).sort((a, b) => b.timestamp - a.timestamp);
   });
-  
+
   totalExpenses = computed(() => {
     return this.currentShiftExpenses().reduce((sum, e) => sum + e.amount, 0);
   });
-  
+
   totalSales = computed(() => {
     return this.currentShiftSales().reduce((sum, s) => sum + s.total, 0);
   });
@@ -356,9 +357,9 @@ export class CashControlComponent {
 
   openShift() {
     try {
-      if (this.amountInput < 0) throw new Error('Cannot open with negative cash.');
-      this.db.openShift(this.amountInput);
-      this.amountInput = 0;
+      if (this.openingAmount < 0) throw new Error('Cannot open with negative cash.');
+      this.db.openShift(this.openingAmount);
+      this.openingAmount = 0;
     } catch (e: any) {
       alert(e.message);
     }
@@ -371,48 +372,54 @@ export class CashControlComponent {
       return;
     }
 
-    if (!confirm('Are you sure you want to close this shift?')) {
+    // Get the closing amount
+    const finalAmount = Number(this.closingAmount) || 0;
+
+    // Validate amount
+    if (finalAmount <= 0) {
+      alert('Por favor ingrese el monto de efectivo real contado.');
       return;
     }
 
     try {
-      const finalAmount = Number(this.amountInput) || 0;
       const difference = finalAmount - shift.endCashExpected;
-      
-      // Close logic
+
+      // Close logic - save a copy before closing
+      const shiftToReport = { ...shift };
+
       this.db.closeShift(finalAmount);
-      this.amountInput = 0;
-      
+      this.closingAmount = 0;
+
       try {
-        this.generateAndDownloadReport(shift, finalAmount, difference);
+        this.generateAndDownloadReport(shiftToReport, finalAmount, difference);
       } catch (reportError) {
         console.error("Report generation failed:", reportError);
       }
-      
-      alert('Shift Closed Successfully. Closing session...');
+
+      alert('¡Turno cerrado exitosamente! Cerrando sesión...');
       this.db.logout();
 
     } catch (e: any) {
-      console.error(e);
-      alert('CRITICAL ERROR closing shift: ' + e.message);
+      console.error('Error closing shift:', e);
+      alert('ERROR al cerrar turno: ' + e.message);
     }
   }
 
   generateAndDownloadReport(shift: CashShift, actual: number, diff: number) {
     const currentUser = this.db.currentUser();
     const date = new Date();
-    
+
     // 1. Calculate Aggregates
     const shiftSales = this.db.sales().filter(s => s.shiftId === shift.id);
     const shiftExpenses = this.db.expenses().filter(e => e.shiftId === shift.id);
-    
+
     const totalSalesCash = shiftSales.filter(s => s.paymentMethod === 'CASH').reduce((sum, s) => sum + s.total, 0);
     const totalSalesCard = shiftSales.filter(s => s.paymentMethod === 'CARD').reduce((sum, s) => sum + s.total, 0);
     const totalExpenses = shiftExpenses.reduce((sum, e) => sum + e.amount, 0);
 
     // 2. Itemized Sales Audit
-    const itemMap = new Map<string, {name: string, sku: string, qty: number, subtotal: number}>();
-    
+    const itemMap = new Map<string, { name: string, sku: string, qty: number, subtotal: number }>();
+
     shiftSales.forEach(sale => {
       sale.items.forEach(item => {
         if (!itemMap.has(item.variantId)) {
@@ -452,7 +459,7 @@ export class CashControlComponent {
       "==========================================",
       " DETALLE DE GASTOS (Caja Chica)",
       "------------------------------------------",
-      ...shiftExpenses.map(e => 
+      ...shiftExpenses.map(e =>
         ` [${new Date(e.timestamp).toLocaleTimeString()}] ${e.category.padEnd(8)} S/.${e.amount.toFixed(2)} - ${e.description}`
       ),
       shiftExpenses.length === 0 ? " (Sin gastos registrados)" : "",
@@ -462,10 +469,10 @@ export class CashControlComponent {
       " DETALLE DE VENTAS (TICKETS)",
       "------------------------------------------",
       ...shiftSales.map(s => {
-          const t = new Date(s.timestamp).toLocaleTimeString();
-          const head = ` [${t}] ${s.paymentMethod} | S/.${s.total.toFixed(2)} | ${s.userName}`;
-          const body = s.items.map(i => `     ${i.quantity}x ${i.productName} (${i.attributeSummary})`).join('\n');
-          return `${head}\n${body}\n- - - - - - - - - - - - - - - - - - - - -`;
+        const t = new Date(s.timestamp).toLocaleTimeString();
+        const head = ` [${t}] ${s.paymentMethod} | S/.${s.total.toFixed(2)} | ${s.userName}`;
+        const body = s.items.map(i => `     ${i.quantity}x ${i.productName} (${i.attributeSummary})`).join('\n');
+        return `${head}\n${body}\n- - - - - - - - - - - - - - - - - - - - -`;
       }),
       shiftSales.length === 0 ? " (Sin ventas registradas)" : "",
       "==========================================",
@@ -473,7 +480,7 @@ export class CashControlComponent {
       "------------------------------------------",
       " SKU       | QTY | SUBTOTAL  | PRODUCTO",
       "------------------------------------------",
-      ...Array.from(itemMap.values()).map(i => 
+      ...Array.from(itemMap.values()).map(i =>
         ` ${i.sku.padEnd(10)}| ${i.qty.toString().padEnd(4)}| S/.${i.subtotal.toFixed(2).padEnd(6)}| ${i.name}`
       ),
       "==========================================",
@@ -484,17 +491,17 @@ export class CashControlComponent {
     const textContent = lines.join('\n');
     const blob = new Blob([textContent], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Cierre_${date.toISOString().slice(0,10)}_${shift.userName}.txt`;
+    a.download = `Cierre_${date.toISOString().slice(0, 10)}_${shift.userName}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    
+
     window.URL.revokeObjectURL(url);
   }
-  
+
   t(key: string): string {
     return this.translationService.translate(key);
   }

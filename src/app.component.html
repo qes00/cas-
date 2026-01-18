@@ -1,212 +1,245 @@
 <div class="flex h-full w-full bg-slate-100 overflow-hidden">
-  
-  @if (!db.currentUser()) {
-    <!-- Login Overlay -->
-    <div class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-300 relative">
-        
-        <!-- Header -->
-        <div class="p-8 bg-blue-700 text-center">
-          <span class="material-icons text-white text-6xl mb-2">storefront</span>
-          <h1 class="text-3xl font-bold text-white">{{ t('retailFlow') }}</h1>
-          <p class="text-blue-100 mt-2">{{ t('whoIsSelling') }}</p>
-        </div>
-        
-        <div class="p-8">
-          
-          @if (!selectedUserForLogin()) {
-            <!-- Step 1: Select User -->
-            <p class="text-sm font-bold text-slate-500 uppercase mb-4 tracking-wider text-center">{{ t('selectUser') }}</p>
-            
-            <div class="space-y-3">
-              @for (user of db.users(); track user.id) {
-                <button 
-                  (click)="initiateLogin(user)" 
-                  class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all group bg-white shadow-sm"
-                >
-                  <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shadow-inner">
-                    {{ user.name.charAt(0).toUpperCase() }}
-                  </div>
-                  <div class="text-left flex-1">
-                    <span class="block font-bold text-slate-700 group-hover:text-blue-700">{{ user.name }}</span>
-                    <span class="text-xs text-slate-400 font-medium">{{ user.role }}</span>
-                  </div>
-                  <span class="material-icons text-slate-300 group-hover:text-blue-500">arrow_forward_ios</span>
-                </button>
-              }
-            </div>
 
-            <div class="mt-8 text-center">
-              <p class="text-xs text-slate-400">Secure Access • v1.2</p>
-            </div>
+  <!-- Loading Overlay -->
+  @if (auth.isLoading()) {
+  <div class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center">
+    <div class="text-center">
+      <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p class="text-white text-lg">{{ t('loading') }}...</p>
+    </div>
+  </div>
+  }
 
+  @if (!auth.currentUser() && !auth.isLoading()) {
+  <!-- Login Overlay -->
+  <div class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
+    <div
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-300 relative">
+
+      <!-- Header -->
+      <div class="p-8 bg-gradient-to-br from-blue-600 to-blue-800 text-center">
+        <span class="material-icons text-white text-6xl mb-2">storefront</span>
+        <h1 class="text-3xl font-bold text-white">{{ t('retailFlow') }}</h1>
+        <p class="text-blue-100 mt-2">
+          @if (isRegistering()) {
+          {{ t('createAccount') || 'Crear Cuenta' }}
           } @else {
-            <!-- Step 2: Enter Password -->
-            <div class="animate-in slide-in-from-right duration-300">
-               <button (click)="cancelLogin()" class="absolute top-4 left-4 text-white/80 hover:text-white flex items-center text-sm font-bold z-10">
-                 <span class="material-icons text-sm mr-1">arrow_back</span> {{ t('back') }}
-               </button>
-
-               <div class="text-center mb-6">
-                 <div class="w-16 h-16 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-2xl shadow-inner mb-3">
-                    {{ selectedUserForLogin()?.name?.charAt(0)?.toUpperCase() }}
-                 </div>
-                 <h3 class="text-xl font-bold text-slate-800">{{ selectedUserForLogin()?.name }}</h3>
-                 <p class="text-sm text-slate-400">{{ selectedUserForLogin()?.role }}</p>
-               </div>
-
-               <div class="space-y-4">
-                 <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('password') }}</label>
-                   <input 
-                     type="password" 
-                     [(ngModel)]="passwordInput" 
-                     [placeholder]="t('enterPassword')"
-                     class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                     [class.border-red-500]="loginError()"
-                     [class.focus:ring-red-500]="loginError()"
-                     autofocus
-                   >
-                   @if (loginError()) {
-                     <p class="text-red-500 text-sm mt-1 font-medium flex items-center justify-center">
-                       <span class="material-icons text-sm mr-1">error</span> {{ loginError() }}
-                     </p>
-                   }
-                 </div>
-
-                 <button 
-                   (click)="confirmLogin()" 
-                   class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-200 transition-all active:scale-95"
-                 >
-                   {{ t('login') }}
-                 </button>
-                 
-                 <button (click)="cancelLogin()" class="w-full text-slate-400 text-sm hover:text-slate-600 font-medium py-2">
-                   {{ t('cancel') }}
-                 </button>
-               </div>
-            </div>
+          {{ t('signInPrompt') || 'Iniciar Sesión' }}
           }
+        </p>
+      </div>
+
+      <div class="p-8">
+        @if (!isRegistering()) {
+        <!-- Login Form -->
+        <form (submit)="$event.preventDefault(); confirmLogin()" class="space-y-4">
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('email') || 'Email' }}</label>
+            <input type="email" [(ngModel)]="emailInput" name="email"
+              [placeholder]="t('enterEmail') || 'usuario@ejemplo.com'"
+              class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+              [class.border-red-500]="auth.authError()" autocomplete="email" autofocus>
+          </div>
+
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('password') }}</label>
+            <input type="password" [(ngModel)]="passwordInput" name="password" [placeholder]="t('enterPassword')"
+              class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+              [class.border-red-500]="auth.authError()" autocomplete="current-password">
+          </div>
+
+          @if (auth.authError()) {
+          <p class="text-red-500 text-sm font-medium flex items-center justify-center bg-red-50 p-3 rounded-lg">
+            <span class="material-icons text-sm mr-1">error</span> {{ auth.authError() }}
+          </p>
+          }
+
+          <button type="submit" [disabled]="!emailInput() || !passwordInput()"
+            class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-200 transition-all active:scale-95">
+            {{ t('login') }}
+          </button>
+        </form>
+
+        <div class="mt-6 text-center">
+          <button (click)="toggleRegistration()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+            {{ t('noAccount') || '¿No tienes cuenta?' }} <span class="underline">{{ t('register') || 'Regístrate'
+              }}</span>
+          </button>
+        </div>
+
+        } @else {
+        <!-- Registration Form -->
+        <form (submit)="$event.preventDefault(); confirmRegister()" class="space-y-4">
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('name') || 'Nombre' }}</label>
+            <input type="text" [(ngModel)]="registerName" name="name" [placeholder]="t('fullName') || 'Tu nombre'"
+              class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+              autofocus>
+          </div>
+
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('email') || 'Email' }}</label>
+            <input type="email" [(ngModel)]="emailInput" name="email"
+              [placeholder]="t('enterEmail') || 'usuario@ejemplo.com'"
+              class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+              [class.border-red-500]="auth.authError()" autocomplete="email">
+          </div>
+
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">{{ t('password') }}</label>
+            <input type="password" [(ngModel)]="passwordInput" name="password"
+              [placeholder]="t('passwordHint') || 'Mínimo 6 caracteres'"
+              class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+              [class.border-red-500]="auth.authError()" autocomplete="new-password">
+          </div>
+
+          @if (auth.authError()) {
+          <p class="text-red-500 text-sm font-medium flex items-center justify-center bg-red-50 p-3 rounded-lg">
+            <span class="material-icons text-sm mr-1">error</span> {{ auth.authError() }}
+          </p>
+          }
+
+          <button type="submit" [disabled]="!emailInput() || !passwordInput() || !registerName()"
+            class="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white font-bold py-3 rounded-lg shadow-lg shadow-green-200 transition-all active:scale-95">
+            {{ t('createAccount') || 'Crear Cuenta' }}
+          </button>
+        </form>
+
+        <div class="mt-6 text-center">
+          <button (click)="toggleRegistration()" class="text-slate-500 hover:text-slate-700 text-sm font-medium">
+            <span class="material-icons text-sm align-middle mr-1">arrow_back</span>
+            {{ t('backToLogin') || 'Volver al inicio de sesión' }}
+          </button>
+        </div>
+        }
+
+        <div class="mt-8 text-center">
+          <p class="text-xs text-slate-400">Secure Access • v2.0 • Firebase Auth</p>
         </div>
       </div>
     </div>
-  } @else {
-    <!-- Sidebar -->
-    <aside 
-      class="bg-slate-900 text-white flex flex-col transition-all duration-300 ease-in-out shadow-xl z-20"
-      [class.w-64]="isSidebarOpen()"
-      [class.w-20]="!isSidebarOpen()"
-    >
-      <div class="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950">
+  </div>
+  } @else if (auth.currentUser()) {
+  <!-- Sidebar -->
+  <aside class="bg-slate-900 text-white flex flex-col transition-all duration-300 ease-in-out shadow-xl z-20"
+    [class.w-64]="isSidebarOpen()" [class.w-20]="!isSidebarOpen()">
+    <div class="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950">
+      @if (isSidebarOpen()) {
+      <h1 class="font-bold text-xl tracking-tight text-blue-400">{{ t('retailFlow') }}</h1>
+      }
+      <button (click)="toggleSidebar()" class="p-2 rounded hover:bg-slate-800 text-slate-400">
+        <span class="material-icons">menu</span>
+      </button>
+    </div>
+
+    <nav class="flex-1 py-6 space-y-2 px-2 overflow-y-auto">
+      <button (click)="setView('dashboard')" class="w-full flex items-center p-3 rounded-lg transition-colors group"
+        [class.bg-blue-600]="currentView() === 'dashboard'" [class.text-white]="currentView() === 'dashboard'"
+        [class.text-slate-400]="currentView() !== 'dashboard'"
+        [class.hover:bg-slate-800]="currentView() !== 'dashboard'">
+        <span class="material-icons text-2xl">dashboard</span>
         @if (isSidebarOpen()) {
-          <h1 class="font-bold text-xl tracking-tight text-blue-400">{{ t('retailFlow') }}</h1>
+        <span class="ml-4 font-medium">{{ t('dashboard') }}</span>
         }
-        <button (click)="toggleSidebar()" class="p-2 rounded hover:bg-slate-800 text-slate-400">
-          <span class="material-icons">menu</span>
-        </button>
-      </div>
+      </button>
 
-      <nav class="flex-1 py-6 space-y-2 px-2 overflow-y-auto">
-        <button (click)="setView('dashboard')" 
-          class="w-full flex items-center p-3 rounded-lg transition-colors group"
-          [class.bg-blue-600]="currentView() === 'dashboard'"
-          [class.text-white]="currentView() === 'dashboard'"
-          [class.text-slate-400]="currentView() !== 'dashboard'"
-          [class.hover:bg-slate-800]="currentView() !== 'dashboard'"
-        >
-          <span class="material-icons text-2xl">dashboard</span>
-          @if (isSidebarOpen()) {
-            <span class="ml-4 font-medium">{{ t('dashboard') }}</span>
-          }
-        </button>
-
-        <button (click)="setView('pos')" 
-          class="w-full flex items-center p-3 rounded-lg transition-colors group"
-          [class.bg-blue-600]="currentView() === 'pos'"
-          [class.text-white]="currentView() === 'pos'"
-          [class.text-slate-400]="currentView() !== 'pos'"
-          [class.hover:bg-slate-800]="currentView() !== 'pos'"
-        >
-          <span class="material-icons text-2xl">point_of_sale</span>
-          @if (isSidebarOpen()) {
-            <span class="ml-4 font-medium">{{ t('pos') }}</span>
-          }
-        </button>
-
-        <button (click)="setView('inventory')" 
-          class="w-full flex items-center p-3 rounded-lg transition-colors group"
-          [class.bg-blue-600]="currentView() === 'inventory'"
-          [class.text-white]="currentView() === 'inventory'"
-          [class.text-slate-400]="currentView() !== 'inventory'"
-          [class.hover:bg-slate-800]="currentView() !== 'inventory'"
-        >
-          <span class="material-icons text-2xl">inventory_2</span>
-          @if (isSidebarOpen()) {
-            <span class="ml-4 font-medium">{{ t('inventory') }}</span>
-          }
-        </button>
-
-        <button (click)="setView('cash')" 
-          class="w-full flex items-center p-3 rounded-lg transition-colors group"
-          [class.bg-blue-600]="currentView() === 'cash'"
-          [class.text-white]="currentView() === 'cash'"
-          [class.text-slate-400]="currentView() !== 'cash'"
-          [class.hover:bg-slate-800]="currentView() !== 'cash'"
-        >
-          <span class="material-icons text-2xl">account_balance_wallet</span>
-          @if (isSidebarOpen()) {
-            <span class="ml-4 font-medium">{{ t('cashControl') }}</span>
-          }
-        </button>
-      </nav>
-      
-      <!-- User Profile & Footer -->
-      <div class="border-t border-slate-800 bg-slate-950">
+      <button (click)="setView('pos')" class="w-full flex items-center p-3 rounded-lg transition-colors group"
+        [class.bg-blue-600]="currentView() === 'pos'" [class.text-white]="currentView() === 'pos'"
+        [class.text-slate-400]="currentView() !== 'pos'" [class.hover:bg-slate-800]="currentView() !== 'pos'">
+        <span class="material-icons text-2xl">point_of_sale</span>
         @if (isSidebarOpen()) {
-          <div class="p-4 flex items-center gap-3">
-             <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg border-2 border-slate-800">
-               {{ db.currentUser()?.name?.charAt(0)?.toUpperCase() }}
-             </div>
-             <div class="flex-1 overflow-hidden">
-               <p class="text-sm font-bold text-white truncate">{{ db.currentUser()?.name }}</p>
-               <p class="text-xs text-slate-400">{{ db.currentUser()?.role }}</p>
-             </div>
-             <button (click)="logout()" class="text-slate-400 hover:text-red-400" [title]="t('logout')">
-               <span class="material-icons">logout</span>
-             </button>
-          </div>
-        } @else {
-           <div class="p-4 flex justify-center">
-             <button (click)="logout()" class="text-slate-400 hover:text-red-400">
-               <span class="material-icons">logout</span>
-             </button>
-           </div>
+        <span class="ml-4 font-medium">{{ t('pos') }}</span>
         }
+      </button>
 
-        <div class="px-4 pb-4 pt-2 text-xs text-slate-600 flex flex-col gap-2">
-          @if (isSidebarOpen()) {
-            <div class="flex justify-center gap-2">
-              <button (click)="setLang('en')" class="px-2 py-1 rounded text-xs font-bold" [class.bg-slate-800]="translationService.language() === 'en'" [class.text-white]="translationService.language() === 'en'" [class.hover:bg-slate-700]="translationService.language() !== 'en'">EN</button>
-              <button (click)="setLang('es')" class="px-2 py-1 rounded text-xs font-bold" [class.bg-slate-800]="translationService.language() === 'es'" [class.text-white]="translationService.language() === 'es'" [class.hover:bg-slate-700]="translationService.language() !== 'es'">ES</button>
-            </div>
-            <p class="text-center">v1.1.1 • {{ t('online') }}</p>
-          }
+      <button (click)="setView('inventory')" class="w-full flex items-center p-3 rounded-lg transition-colors group"
+        [class.bg-blue-600]="currentView() === 'inventory'" [class.text-white]="currentView() === 'inventory'"
+        [class.text-slate-400]="currentView() !== 'inventory'"
+        [class.hover:bg-slate-800]="currentView() !== 'inventory'">
+        <span class="material-icons text-2xl">inventory_2</span>
+        @if (isSidebarOpen()) {
+        <span class="ml-4 font-medium">{{ t('inventory') }}</span>
+        }
+      </button>
+
+      <button (click)="setView('cash')" class="w-full flex items-center p-3 rounded-lg transition-colors group"
+        [class.bg-blue-600]="currentView() === 'cash'" [class.text-white]="currentView() === 'cash'"
+        [class.text-slate-400]="currentView() !== 'cash'" [class.hover:bg-slate-800]="currentView() !== 'cash'">
+        <span class="material-icons text-2xl">account_balance_wallet</span>
+        @if (isSidebarOpen()) {
+        <span class="ml-4 font-medium">{{ t('cashControl') }}</span>
+        }
+      </button>
+    </nav>
+
+    <!-- User Profile & Footer -->
+    <div class="border-t border-slate-800 bg-slate-950">
+      @if (isSidebarOpen()) {
+      <div class="p-4 flex items-center gap-3">
+        <div
+          class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg border-2 border-slate-800">
+          {{ auth.currentUser()?.name?.charAt(0)?.toUpperCase() }}
         </div>
+        <div class="flex-1 overflow-hidden">
+          <p class="text-sm font-bold text-white truncate">{{ auth.currentUser()?.name }}</p>
+          <p class="text-xs text-slate-400">{{ auth.currentUser()?.role }}</p>
+        </div>
+        <button (click)="logout()" class="text-slate-400 hover:text-red-400" [title]="t('logout')">
+          <span class="material-icons">logout</span>
+        </button>
       </div>
-    </aside>
+      } @else {
+      <div class="p-4 flex justify-center">
+        <button (click)="logout()" class="text-slate-400 hover:text-red-400">
+          <span class="material-icons">logout</span>
+        </button>
+      </div>
+      }
 
-    <!-- Main Content Area -->
-    <main class="flex-1 relative overflow-hidden flex flex-col">
-      <!-- View Container -->
-      <div class="flex-1 overflow-auto bg-slate-50 p-4 md:p-6">
-        @switch (currentView()) {
-          @case ('dashboard') { <app-dashboard /> }
-          @case ('pos') { <app-pos /> }
-          @case ('inventory') { <app-inventory /> }
-          @case ('cash') { <app-cash-control /> }
+      <div class="px-4 pb-4 pt-2 text-xs text-slate-600 flex flex-col gap-2">
+        @if (isSidebarOpen()) {
+        <!-- Theme Toggle -->
+        <div class="flex justify-center">
+          <button (click)="theme.toggleTheme()"
+            class="theme-toggle flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-white"
+            [title]="theme.currentTheme() === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'">
+            @if (theme.currentTheme() === 'light') {
+            <span class="material-icons text-sm">dark_mode</span>
+            <span class="text-xs font-medium">Oscuro</span>
+            } @else {
+            <span class="material-icons text-sm">light_mode</span>
+            <span class="text-xs font-medium">Claro</span>
+            }
+          </button>
+        </div>
+        <div class="flex justify-center gap-2">
+          <button (click)="setLang('en')" class="px-2 py-1 rounded text-xs font-bold"
+            [class.bg-slate-800]="translationService.language() === 'en'"
+            [class.text-white]="translationService.language() === 'en'"
+            [class.hover:bg-slate-700]="translationService.language() !== 'en'">EN</button>
+          <button (click)="setLang('es')" class="px-2 py-1 rounded text-xs font-bold"
+            [class.bg-slate-800]="translationService.language() === 'es'"
+            [class.text-white]="translationService.language() === 'es'"
+            [class.hover:bg-slate-700]="translationService.language() !== 'es'">ES</button>
+        </div>
+        <p class="text-center">v2.0 • {{ auth.isCloudConnected() ? t('online') : t('offline') }}</p>
         }
       </div>
-    </main>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 relative overflow-hidden flex flex-col">
+    <!-- View Container -->
+    <div class="flex-1 overflow-auto bg-slate-50 p-4 md:p-6">
+      @switch (currentView()) {
+      @case ('dashboard') { <app-dashboard /> }
+      @case ('pos') { <app-pos /> }
+      @case ('inventory') { <app-inventory /> }
+      @case ('cash') { <app-cash-control /> }
+      }
+    </div>
+  </main>
   }
 
 </div>

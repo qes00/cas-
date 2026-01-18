@@ -177,17 +177,17 @@ export class DashboardComponent {
   translationService = inject(TranslationService);
 
   totalRevenue = computed(() => this.db.sales().reduce((sum, s) => sum + s.total, 0));
-  
+
   // Weekly Revenue Logic (Current Week: Monday to Sunday)
   weeklyRevenue = computed(() => {
     const now = new Date();
-    const day = now.getDay(); 
+    const day = now.getDay();
     const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    
+
     const startOfWeek = new Date(now);
     startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0); 
-    
+    startOfWeek.setHours(0, 0, 0, 0);
+
     const timestampStart = startOfWeek.getTime();
 
     return this.db.sales()
@@ -196,20 +196,27 @@ export class DashboardComponent {
   });
 
   totalTransactions = computed(() => this.db.sales().length);
-  
-  lowStockItems = computed(() => this.db.variants().filter(v => v.stock < 5));
+
+  lowStockItems = computed(() => {
+    const products = this.db.products();
+    return this.db.variants().filter(v => {
+      const product = products.find(p => p.id === v.productId);
+      const threshold = product?.lowStockThreshold || 5;
+      return v.stock < threshold;
+    });
+  });
   lowStockCount = computed(() => this.lowStockItems().length);
-  
+
   isShiftOpen = computed(() => !!this.db.activeShift());
 
   getProductName(pid: string) {
     return this.db.products().find(p => p.id === pid)?.name || 'Unknown';
   }
-  
+
   // --- Backup & Restore ---
   performBackup() {
     const json = this.db.exportDatabase();
-    const filename = `SophiePOS_Backup_${new Date().toISOString().slice(0,10)}.json`;
+    const filename = `SophiePOS_Backup_${new Date().toISOString().slice(0, 10)}.json`;
     this.downloadFile(json, filename, 'application/json');
   }
 
@@ -219,19 +226,19 @@ export class DashboardComponent {
 
     const file = input.files[0];
     const text = await file.text();
-    
-    if(confirm(this.t('confirmRestore'))) {
-       const success = await this.db.importDatabase(text);
-       if (success) {
-         alert('Database restored successfully!');
-         // If we are in local mode, reload to clear any stale state. 
-         // If cloud, the listeners will handle it, but a reload is safer.
-         window.location.reload(); 
-       } else {
-         alert('Failed to restore database. Invalid file format.');
-       }
+
+    if (confirm(this.t('confirmRestore'))) {
+      const success = await this.db.importDatabase(text);
+      if (success) {
+        alert('Database restored successfully!');
+        // If we are in local mode, reload to clear any stale state. 
+        // If cloud, the listeners will handle it, but a reload is safer.
+        window.location.reload();
+      } else {
+        alert('Failed to restore database. Invalid file format.');
+      }
     }
-    
+
     // Reset input
     input.value = '';
   }
@@ -241,44 +248,44 @@ export class DashboardComponent {
     const now = new Date();
     const startDate = new Date(now);
     startDate.setDate(now.getDate() - days);
-    startDate.setHours(0,0,0,0);
+    startDate.setHours(0, 0, 0, 0);
     const fromTime = startDate.getTime();
-    
+
     const reportSales = this.db.sales().filter(s => s.timestamp >= fromTime);
     const reportExpenses = this.db.expenses().filter(e => e.timestamp >= fromTime);
-    
+
     // 1. Financial Aggregates
     const totalSales = reportSales.reduce((acc, s) => acc + s.total, 0);
     const totalCashSales = reportSales.filter(s => s.paymentMethod === 'CASH').reduce((acc, s) => acc + s.total, 0);
     const totalCardSales = reportSales.filter(s => s.paymentMethod === 'CARD').reduce((acc, s) => acc + s.total, 0);
-    
+
     const totalExpenses = reportExpenses.reduce((acc, e) => acc + e.amount, 0);
     const netProfit = totalSales - totalExpenses;
 
     // 2. Sales by Day
     const dailyMap = new Map<string, number>();
     reportSales.forEach(s => {
-       const dateKey = new Date(s.timestamp).toLocaleDateString();
-       dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + s.total);
+      const dateKey = new Date(s.timestamp).toLocaleDateString();
+      dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + s.total);
     });
-    const sortedDays = Array.from(dailyMap.entries()).sort((a,b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+    const sortedDays = Array.from(dailyMap.entries()).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
 
     // 3. Top Products
-    const productMap = new Map<string, {name: string, qty: number, total: number}>();
+    const productMap = new Map<string, { name: string, qty: number, total: number }>();
     reportSales.forEach(s => {
-       s.items.forEach(i => {
-         const key = i.variantId;
-         if (!productMap.has(key)) {
-           productMap.set(key, { name: `${i.productName} [${i.sku}]`, qty: 0, total: 0});
-         }
-         const p = productMap.get(key)!;
-         p.qty += i.quantity;
-         p.total += (i.price * i.quantity);
-       });
+      s.items.forEach(i => {
+        const key = i.variantId;
+        if (!productMap.has(key)) {
+          productMap.set(key, { name: `${i.productName} [${i.sku}]`, qty: 0, total: 0 });
+        }
+        const p = productMap.get(key)!;
+        p.qty += i.quantity;
+        p.total += (i.price * i.quantity);
+      });
     });
     // Top 5 by Quantity
     const topProducts = Array.from(productMap.values())
-      .sort((a,b) => b.qty - a.qty)
+      .sort((a, b) => b.qty - a.qty)
       .slice(0, 10);
 
     // Build Output in SPANISH
@@ -313,12 +320,12 @@ export class DashboardComponent {
       "==============================================",
       " DETALLE DE GASTOS",
       "----------------------------------------------",
-       ...reportExpenses.map(e => ` ${new Date(e.timestamp).toLocaleDateString().padEnd(12)} | S/.${e.amount.toFixed(2).padEnd(8)} | ${e.category} - ${e.description}`),
-       reportExpenses.length === 0 ? " (Sin gastos)" : "",
+      ...reportExpenses.map(e => ` ${new Date(e.timestamp).toLocaleDateString().padEnd(12)} | S/.${e.amount.toFixed(2).padEnd(8)} | ${e.category} - ${e.description}`),
+      reportExpenses.length === 0 ? " (Sin gastos)" : "",
       "=============================================="
     ];
-    
-    this.downloadFile(lines.join('\n'), `Reporte_${title}_${now.toISOString().slice(0,10)}.txt`, 'text/plain');
+
+    this.downloadFile(lines.join('\n'), `Reporte_${title}_${now.toISOString().slice(0, 10)}.txt`, 'text/plain');
   }
 
   exportCsv() {
@@ -335,7 +342,7 @@ export class DashboardComponent {
       return `${s.id},${s.timestamp},${d.toLocaleDateString()},${d.toLocaleTimeString()},${s.total},${s.paymentMethod},${s.userName},"${itemsStr}"`;
     }).join('\n');
 
-    this.downloadFile(header + rows, `Ventas_Export_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv');
+    this.downloadFile(header + rows, `Ventas_Export_${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv');
   }
 
   private downloadFile(content: string, filename: string, type: string) {

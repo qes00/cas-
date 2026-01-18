@@ -1,8 +1,110 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+    
+    function isManager() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'MANAGER'];
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles (for login flow)
+      allow read: if isAuthenticated();
+      // Users can update their own profile (except role)
+      allow update: if isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys());
+      // Only admins can create users or change roles
+      allow create, delete: if isAdmin();
+      // Admins can update any user including role
+      allow update: if isAdmin();
+    }
+
+    // Products Collection
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
+    }
+
+    // Variants Collection
+    match /variants/{variantId} {
+      allow read: if isAuthenticated();
+      // Managers can do anything with variants
+      allow write: if isManager();
+      // Any authenticated user (seller) can update stock for sales
+      allow update: if isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']);
+    }
+
+    // Sales Collection
+    match /sales/{saleId} {
+      allow read: if isAuthenticated();
+      // Any authenticated user (seller) can create sales
+      allow create: if isAuthenticated();
+      // Only managers can update/delete sales
+      allow update, delete: if isManager();
+    }
+
+    // Shifts Collection
+    match /shifts/{shiftId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      // Only the user who opened or managers can update
+      allow update: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isManager());
+      allow delete: if isAdmin();
+    }
+
+    // Expenses Collection
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isManager();
+    }
+
+    // Customers Collection (for Phase 4)
+    match /customers/{customerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Discounts Collection (for Phase 5)
+    match /discounts/{discountId} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
+    }
+
+    // Returns Collection (for Phase 7)
+    match /returns/{returnId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isManager();
+    }
+
+    // Inventory Movements (for Phase 6)
+    match /inventoryMovements/{movementId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isManager();
+    }
+
+    // Suppliers (for Phase 6)
+    match /suppliers/{supplierId} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
     }
   }
 }
