@@ -8,7 +8,7 @@ Un sistema de punto de venta moderno desarrollado con Angular para la gestión d
 - **Proceso de venta rápido** con múltiples pagos
 - **Dashboard interactivo** con métricas
 - **Control de inventario** en tiempo real
-- **Facturación electrónica**
+- **Facturación electrónica (WIP) **
 - **Reportes de ventas**
 
 ## 🚀 Tecnologías
@@ -26,7 +26,7 @@ Login → Dashboard → Ventas → Productos → Reportes
 - **Demo:** `https://qes00.github.io/cas_`
 
 ## 📄 Licencia
-MIT © 2023
+MIT © 2026
 
 ---
 
