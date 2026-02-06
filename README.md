@@ -8,7 +8,7 @@ Un sistema de punto de venta moderno desarrollado con Angular para la gestión d
 - **Proceso de venta rápido** con múltiples pagos
 - **Dashboard interactivo** con métricas
 - **Control de inventario** en tiempo real
-- **Facturación electrónica (WIP) **
+- **Facturación electrónica ** (WIP)
 - **Reportes de ventas**
 
 ## 🚀 Tecnologías
